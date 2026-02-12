@@ -1,0 +1,104 @@
+/* Chat Styles */
+.message-input-container {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 8px;
+}
+
+.message-input-container ion-textarea {
+  flex: 1;
+  max-height: 120px;
+}
+
+.message-bubble {
+  padding: 8px 12px;
+  border-radius: 16px;
+  max-width: 80%;
+  word-wrap: break-word;
+}
+
+.message-bubble.sent {
+  background-color: var(--ion-color-primary);
+  color: var(--ion-color-primary-contrast);
+  margin-left: auto;
+}
+
+.message-bubble.received {
+  background-color: var(--ion-color-light);
+  color: var(--ion-color-dark);
+}
+
+.message-bubble small {
+  display: block;
+  margin-top: 4px;
+  opacity: 0.7;
+  font-size: 0.75rem;
+}
+
+.message-sent {
+  --background: transparent;
+  text-align: right;
+}
+
+.message-received {
+  --background: transparent;
+  text-align: left;
+}
+
+/* Map Styles */
+.ticket-map-container {
+  position: relative;
+}
+
+.maplibregl-map {
+  font-family: inherit;
+}
+
+.maplibregl-popup-content {
+  padding: 0;
+  border-radius: 8px;
+}
+
+.maplibregl-popup-close-button {
+  font-size: 18px;
+  padding: 4px;
+}
+
+.marker {
+  transition: transform 0.2s ease;
+}
+
+.marker:hover {
+  transform: scale(1.2);
+}
+
+.map-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 300px;
+  background-color: var(--ion-color-light);
+  color: var(--ion-color-medium);
+}
+
+/* Dark mode adjustments */
+.dark .message-bubble.received {
+  background-color: var(--ion-color-dark);
+  color: var(--ion-color-light);
+}
+
+.dark .map-placeholder {
+  background-color: var(--ion-color-dark);
+}
+
+.dark .maplibregl-popup-content {
+  background-color: var(--ion-color-dark);
+  color: var(--ion-color-light);
+}
+
+.maplibregl-canvas {
+  width: 100% !important;
+  height: 100% !important;
+}

@@ -1,0 +1,170 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import React, { useState } from 'react';
+import {
+  IonContent,
+  IonHeader,
+  IonPage,
+  IonTitle,
+  IonToolbar,
+  IonButtons,
+  IonButton,
+  IonIcon,
+  IonText,
+  IonInput,
+  IonFooter,
+  IonSpinner,
+  IonBackButton,
+  IonPopover,
+  IonList,
+  IonItem,
+  IonLabel
+} from '@ionic/react';
+import {
+  informationCircleOutline,
+  sendOutline,
+  attachOutline,
+  callOutline,
+  videocamOutline,
+  ellipsisVertical
+} from 'ionicons/icons';
+import { ChatLists } from '../components/ui/chat/chat-list';
+import { useChatDetail } from '../hooks/useChatDetail';
+import './ChatDetailPage.css';
+import ChatBottombar from '@/components/ui/chat/chat-bottombar';
+import { useAuthContext } from '@/contexts/AuthContext';
+import apiService from '@/services/api';
+import { useDataStore } from '@/stores/useTicketsChat';
+
+const ChatDetailPage: React.FC = () => {
+  const { user } = useAuthContext()
+  const {
+    ticketChat,
+    chatHistory,
+    isLoading,
+    scrollRef,
+    handleScrolltop
+  } = useChatDetail();
+  const {
+    setSelectedTicketChat,
+    fetchChatHistory
+  } = useDataStore();
+  const handleSubmit = async () => {
+
+    try {
+      let chat: any = await apiService.request("/Tickets/open/" + ticketChat.id + "/" + user.id,);
+
+
+      setSelectedTicketChat(chat);
+      fetchChatHistory(chat.id,1)
+
+
+    } catch (error) {
+
+      console.error("Error al enviar:", error);
+    }
+  };
+  if (!ticketChat.id) {
+    return (
+      <IonPage>
+        <IonContent className="ion-padding">
+          <div className="flex justify-center items-center h-full">
+            <IonSpinner name="crescent" />
+          </div>
+        </IonContent>
+      </IonPage>
+    );
+  }
+
+  return (
+    <IonPage>
+      <IonHeader>
+        <IonToolbar>
+          <IonButtons slot="start">
+            <IonBackButton defaultHref="/tabs/chat" />
+          </IonButtons>
+
+          <div className="flex items-center">
+
+            <div>
+              <IonTitle size="small" className="text-left">
+                {ticketChat.Contact?.name || 'Usuario'}
+              </IonTitle>
+              <IonText color="medium" className="text-xs">
+                {ticketChat.Contact?.number}
+              </IonText>
+            </div>
+          </div>
+          <IonButtons slot="end">
+            <IonButton id="click-trigger">
+              <IonIcon icon={ellipsisVertical} />
+            </IonButton>
+          </IonButtons>
+          <IonPopover trigger="click-trigger" triggerAction="click">
+            <IonContent>
+              <IonList lines="none">
+                {(ticketChat.userId === null || (user.id === ticketChat.userId) && ticketChat.status !== "open") && (
+                  <IonItem button
+                    onClick={handleSubmit}
+                  >
+
+                    <IonLabel> Abrir</IonLabel>
+                  </IonItem>)}
+                {(ticketChat.status === "open" || (user.id === ticketChat.userId)) && (<IonItem button >
+
+                  <IonLabel>  Resolver</IonLabel>
+                </IonItem>)}
+              </IonList>
+            </IonContent>
+          </IonPopover>
+        </IonToolbar>
+      </IonHeader>
+      <IonContent>
+        <ChatLists
+          messages={chatHistory}
+          onScroll={handleScrolltop}
+          loading={isLoading}
+          scrollRef={scrollRef}
+        />
+      </IonContent>
+
+
+
+      <div className="flex items-center gap-2">
+        <ChatBottombar selectedUser={ticketChat} user={user} isMobile={true} />
+        {/* <IonButton fill="clear" size="small" className="flex-shrink-0">
+              <IonIcon icon={attachOutline} color="medium" />
+            </IonButton>
+
+
+            <IonInput
+              value={message}
+              onIonInput={(e) => setMessage(e.detail.value!)}
+              placeholder="Escribe un mensaje..."
+              className=""
+              onKeyPress={(e) => {
+                if (e.key === 'Enter') {
+                  handleSendMessage();
+                }
+              }}
+            />
+
+
+            <IonButton
+              fill={message.trim() ? 'solid' : 'clear'}
+              size="small"
+              onClick={handleSendMessage}
+              disabled={!message.trim()}
+              className="chat-send-button"
+              color={message.trim() ? 'primary' : 'medium'}
+            >
+              <IonIcon icon={sendOutline} />
+            </IonButton> */}
+      </div>
+
+
+      {/* ... IonModal ... */}
+    </IonPage>
+  );
+};
+
+export default ChatDetailPage;

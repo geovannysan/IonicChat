@@ -10,7 +10,8 @@
 
 # production
 /dist
-
+/android
+/ios
 # misc
 .DS_Store
 .env.local
@@ -22,10 +23,10 @@
 /.vscode/*
 !/.vscode/extensions.json
 .idea
-
+.env
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-
+*.md
 # Optional eslint cache
 .eslintcache
