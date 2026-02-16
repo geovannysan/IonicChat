@@ -1,5 +1,5 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useEffect, useState, useMemo } from 'react';
+
+import React, { useEffect, useState, useMemo, useLayoutEffect } from 'react';
 import {
   IonContent,
   IonHeader,
@@ -13,105 +13,185 @@ import {
   IonSpinner,
   IonText,
   IonIcon,
-  IonButton,
-  IonButtons
+  IonTabBar,
+  IonTabButton,
+  IonLabel,
+  getPlatforms
 } from '@ionic/react';
 import {
   chatbubbleOutline,
-  filterOutline,
-  refreshCircleOutline,
   refreshOutline
 } from 'ionicons/icons';
 import { useHistory } from 'react-router-dom';
 import { useDataStore } from '../stores/useTicketsChat';
 import { useAuthContext } from '../contexts/AuthContext';
 import { cn, formatWhatsAppDate } from '../lib/utils';
-import SoftBadgeDemo  from '@/components/ui/chat/Sidebar';
+import SoftBadgeDemo from '@/components/ui/chat/Sidebar';
 import { Badge } from '@/components/ui/Badge';
-import { HandMetalIcon, MessageCircleCode, UserRoundIcon } from 'lucide-react';
-import {  AvatarFallback } from '@/components/ui/avatar';
+import { MessageCircleCode, UserRoundIcon } from 'lucide-react';
+import { AvatarFallback } from '@/components/ui/avatar';
 import { Avatar } from '@radix-ui/react-avatar';
+import { variable } from "../../everimont/everimonet"
 
+import Onesignal from "onesignal-cordova-plugin"
+import apiService from '@/services/api';
 const ChatListPage: React.FC = () => {
   const history = useHistory();
-  const { user } = useAuthContext();
+  const { user, socket, setUser } = useAuthContext();
   const {
     chats,
     fetchUsers,
-    hasMore,
     isLoading,
     fetchChatHistory,
-    setSelectedTicketChat
+    setSelectedTicketChat,
+
   } = useDataStore();
 
   const [searchTerm, setSearchTerm] = useState("");
-  const [pageNumber, setPageNumber] = useState(1);
-
+  const [activeTab, setActiveTab] = useState<'asignadas' | 'mias' | 'pendientes' | 'todas'>('todas');
   useEffect(() => {
-    // Cargar chats iniciales
     fetchUsers(1);
   }, [fetchUsers]);
-
-  const sortedChats = useMemo(() => {
-    let filteredChats = [...chats];
-
-    // Filtro de búsqueda
-    if (searchTerm) {
-      filteredChats = filteredChats.filter((chat) => {
-        const searchableText = [
-          chat.Contact?.name,
-          chat.lastMessage,
-          chat.Contact?.number
-        ].join(" ").toLowerCase();
-
-        return searchableText.includes(searchTerm.toLowerCase());
-      });
-    }
-
-    // Ordenar por fecha de actualización
-    return filteredChats.sort((a, b) =>
-      new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-    );
-  }, [chats, searchTerm]);
-
   const handleChatSelect = (chat: any) => {
-    setSelectedTicketChat(chat);
-    fetchChatHistory(chat.id, 1);
+
     history.push(`/chat/${chat.id}`);
+    setSelectedTicketChat(chat);
   };
 
   const handleRefresh = async (event: CustomEvent) => {
-    setPageNumber(1);
+
     await fetchUsers(1);
     event.detail.complete();
   };
 
-  const loadMoreChats = async (event: CustomEvent) => {
-    if (hasMore && !isLoading) {
-      const nextPage = pageNumber + 1;
-      setPageNumber(nextPage);
-      await fetchUsers(nextPage);
+
+  const sortedChats = useMemo(() => {
+    let filteredChats = [...chats];
+
+    // Apply search term filter
+    if (searchTerm) {
+      const searchLower = searchTerm.toLowerCase();
+
+      filteredChats = filteredChats.filter((chat) => {
+        // Unimos valores del objeto, pero filtrando solo strings/números para evitar errores
+        const valores = Object.values(chat)
+          .map(v => (v ? String(v).toLowerCase() : ""))
+          .join(" ");
+
+        const matchesValores = valores.includes(searchLower);
+
+        // Usamos ?? "" para que si la propiedad es null/undefined, no falle el .toLowerCase()
+        const matchesLastMsg = (chat.lastMessage ?? "").toLowerCase().includes(searchLower);
+        const matchesName = (chat.name ?? "").toLowerCase().includes(searchLower);
+        const matchesNumber = (chat.Contact?.number ?? "").toLowerCase().includes(searchLower);
+
+        return matchesValores || matchesLastMsg || matchesName || matchesNumber;
+      });
     }
-    event.detail.complete();
+
+    if (activeTab === "mias" && filteredChats.length > 0) {
+      filteredChats = filteredChats.filter((chat) => chat.userId == user.id)
+    }
+    if (activeTab === "asignadas" && filteredChats.length > 0) {
+      filteredChats = filteredChats.filter((chat) => chat.status == "assigned")
+    }
+    if (activeTab === "pendientes" && filteredChats.length > 0) {
+      filteredChats = filteredChats.filter((chat) => chat.userId == null)
+    }
+
+
+    return filteredChats.sort((a, b) =>
+      new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+    );
+  }, [chats, searchTerm, activeTab]);
+  useLayoutEffect(() => {
+    if (!getPlatforms().includes("android")) return;
+
+    const setupNotifications = async () => {
+      try {
+        Onesignal.initialize(variable.onesignaid);
+
+        const hasPermission = await Onesignal.Notifications.requestPermission(true);
+
+        if (hasPermission) {
+          Onesignal.User.pushSubscription.optIn();
+          const account = user.cuenta.find((el: any) => el.accountId == user.perfil);
+
+          Onesignal.login(account.accountId + "_" + account.id)
+          const currentId = await Onesignal.User.getOnesignalId();
+          if (currentId) {
+            console.log("pushId inicial:", currentId);
+            updateUserInDB(currentId);
+          }
+
+          Onesignal.User.pushSubscription.addEventListener("change", (event) => {
+            const newId = event.current.id;
+            if (newId) {
+              updateUserInDB(newId);
+            }
+          });
+
+          Onesignal.Notifications.addEventListener('click', (e) => {
+            const data = e.notification.additionalData as any;
+            if (data?.url) {
+              history.push(data.url);
+            }
+          });
+        }
+      } catch (error) {
+
+      }
+    };
+
+    setupNotifications();
+  }, []);
+
+  const updateUserInDB = async (pushId: string) => {
+    const account = user.selectedAccount;
+
+    if (account) {
+      await apiService.request("/Users/acount/" + account.id, {
+        method: "PUT",
+        data: { idWorkspace: pushId }
+      });
+    }
   };
-
- 
-
 
   return (
     <IonPage>
       <IonHeader className="ion-no-border">
         <IonToolbar>
           <IonTitle>Chats</IonTitle>
-          <IonButtons slot="end">
-            <IonButton onClick={()=>fetchUsers(1)}>
-              <IonIcon icon={refreshCircleOutline} />
-            </IonButton>
-          </IonButtons>
+          <IonSearchbar
+            value={searchTerm}
+            onIonInput={(e) => setSearchTerm(e.detail.value!)}
+            placeholder="Buscar chats..."
+            showClearButton="focus"
+          />
         </IonToolbar>
       </IonHeader>
 
-      <IonContent className="ion-padding">
+      <IonTabBar slot='top' className="ion-no-padding" >
+        <IonTabButton tab="todas" onClick={() => setActiveTab('todas')} selected={activeTab === 'todas'}>
+
+          <IonLabel>Todas </IonLabel>
+        </IonTabButton>
+        <IonTabButton tab="mias" onClick={() => setActiveTab('mias')} selected={activeTab === 'mias'}>
+
+          <IonLabel>Mias</IonLabel>
+        </IonTabButton>
+        <IonTabButton tab="pendientes" onClick={() => setActiveTab('pendientes')} selected={activeTab === 'pendientes'}>
+
+          <IonLabel>Pendien.</IonLabel>
+        </IonTabButton>
+        <IonTabButton tab="asignadas" onClick={() => setActiveTab('asignadas')} selected={activeTab === 'asignadas'}>
+
+          <IonLabel>Asigna.</IonLabel>
+        </IonTabButton>
+
+      </IonTabBar>
+
+      <IonContent className="ion-no-padding">
         <IonRefresher slot="fixed" onIonRefresh={handleRefresh}>
           <IonRefresherContent
             pullingIcon={refreshOutline}
@@ -121,12 +201,7 @@ const ChatListPage: React.FC = () => {
           />
         </IonRefresher>
 
-        <IonSearchbar
-          value={searchTerm}
-          onIonInput={(e) => setSearchTerm(e.detail.value!)}
-          placeholder="Buscar chats..."
-          showClearButton="focus"
-        />
+
 
         {sortedChats.length === 0 && !isLoading ? (
           <div className="flex flex-col items-center justify-center h-64 text-center p-4">
@@ -134,7 +209,6 @@ const ChatListPage: React.FC = () => {
               icon={chatbubbleOutline}
               size="large"
               color="medium"
-              className="mb-4"
             />
             <IonText color="medium">
               <h3>Sin chats disponibles</h3>
@@ -240,7 +314,7 @@ const ChatListPage: React.FC = () => {
                     <div className="flex items-center">
                       {chat.etiquetas.slice(0, 3).map((tag: any, idx: number) => (
                         <Badge
-                          key={"bg"+idx}
+                          key={"bg" + idx}
                           className={cn(
                             "text-white h-5 w-5",
                             tag.color ? "" : "bg-gray-400"
@@ -253,29 +327,6 @@ const ChatListPage: React.FC = () => {
                   )}
                 </div>
               </div>
-              // <IonItem
-              //   key={chat.id}
-              //   button
-              //   onClick={() => handleChatSelect(chat)}
-              //   detail={false}>
-              //   <IonIcon color="danger" slot="start" icon={person} size="small"></IonIcon>
-
-              //   <div className="unread-indicator-wrapper" slot="start">
-              //     <div className="unread-indicator"></div>
-              //   </div>
-              //   <IonLabel>
-              //     <strong> {chat.Contact?.name || 'Usuario'}</strong>
-
-              //     <br />
-              //     <IonNote color="medium" className="ion-text-wrap">
-              //       {chat.lastMessage || 'Sin mensajes'}
-              //     </IonNote>
-              //   </IonLabel>
-              //   <div className="metadata-end-wrapper" slot="end">
-              //     <IonNote color="medium">{formatWhatsAppDate(chat.updatedAt)}</IonNote>
-
-              //   </div>
-              // </IonItem>
             ))}
 
           </IonList>

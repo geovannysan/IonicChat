@@ -17,7 +17,10 @@ import {
   IonList,
   IonInfiniteScroll,
   IonInfiniteScrollContent,
-  IonSpinner
+  IonSpinner,
+  IonItem,
+  IonNote,
+  IonCardTitle
 } from '@ionic/react';
 import { chatbubbleOutline, locationOutline } from 'ionicons/icons';
 import { useState, useEffect } from 'react';
@@ -76,7 +79,7 @@ const ContactDetailPage: React.FC = () => {
     }
   };
 
-  const historial=(idchat:string)=> history.push("/contact/historial/"+idchat)
+  const historial = (idchat: string) => history.push("/contact/historial/" + idchat)
   if (!contact) {
     return (
       <IonPage>
@@ -104,18 +107,44 @@ const ContactDetailPage: React.FC = () => {
             <IonAvatar style={{ margin: '0 auto 16px', width: '80px', height: '80px' }}>
               <img src={`https://ui-avatars.com/api/?name=${contact.name}`} alt={contact.name} />
             </IonAvatar>
-            <h2>{contact.name}</h2>
+            <h2> Nombre {contact.name}</h2>
+            <h2>Contacto{contact.number}</h2>
           </IonCardContent>
         </IonCard>
 
 
 
+        <IonCard>
+          <IonCardContent className="text-center">
+            <IonCardTitle>Datos Adicionales</IonCardTitle>
+            <IonList>
+              {
+                contact.extraInfo.map((el, id) => (
+                  <IonItem key={"lista" + id}>
+                    <IonLabel>
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1 min-w-0">
+                          <strong> {el?.name || 'Usuario'}</strong>
 
 
-        <IonButton expand="block" className="ion-margin">
-          <IonIcon icon={chatbubbleOutline} slot="start" />
-          Iniciar Chat
-        </IonButton>
+                          <br />
+                          <IonNote color="medium" className="ion-text-wrap">
+                            {el?.value}
+                          </IonNote>
+
+                        </div>
+                      </div>
+
+                     </IonLabel>
+
+                  </IonItem>
+                ))
+              }
+            </IonList>
+          </IonCardContent>
+        </IonCard>
+
+
       </IonContent>)}
       {activeTab === "historial" && (
         <IonContent className=' ion-padding'>
@@ -126,7 +155,7 @@ const ContactDetailPage: React.FC = () => {
             ).map((chat) => (
               <div
                 key={chat.id}
-                onClick={()=>historial(chat.id)}
+                onClick={() => historial(chat.id)}
                 className={cn(
                   "w-full flex flex-col gap-1 p-3 transition-all cursor-pointer hover:bg-muted/30 border-b border-zinc-200 dark:border-zinc-700",
                   chat.variant === "secondary" && "bg-cyan-900/10 text-white hover:bg-cyan-900/20"

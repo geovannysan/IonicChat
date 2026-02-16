@@ -96,7 +96,7 @@ const ChatHistorialPage: React.FC = () => {
       </IonHeader>
       <IonContent>
         <ChatLists
-          messages={mensajehistory.sort((a: any, b: any) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())}
+          messages={mensajehistory.sort((a: any, b: any) => new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime())}
           onScroll={handleScroll}
           loading={loading}
           scrollRef={scrollRef}

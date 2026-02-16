@@ -178,26 +178,23 @@ const SoporteTicketsPage: React.FC = () => {
             lng={longitude ?? -79.934464}
             locations={agendaTickets.length > 0
               ? agendaTickets
-                .filter(t => t.latitude && t.longitude)
+                .filter(t => {
+                  const lat = parseFloat(t.latitude??"");
+                  const lng = parseFloat(t.longitude??"");
+                  return (
+                    !isNaN(lat) && lat >= -90 && lat <= 90 &&
+                    !isNaN(lng) && lng >= -180 && lng <= 180 &&
+                    (lat !== 0 || lng !== 0) // Opcional: filtrar si vienen en 0,0
+                  );
+                })
                 .map(t => ({
                   id: String(t.id),
                   name: t.subject || 'Sin asunto',
-                  lng: parseFloat(t.longitude?? "-79.934464"),
-                  lat: parseFloat(t.latitude?? "-2.127554"),
+                  lng:  parseFloat(t.latitude??""),
+                  lat: parseFloat(t.longitude??""),
                   description: `${t.requesterName} - ${t.address || 'Sin dirección'}`
                 }))
-              : [
-                { id: '1', name: 'Reparación Router', lng: -79.935464, lat: -2.128554, description: 'Juan Pérez - Av. Principal 123' },
-                { id: '2', name: 'Instalación Fibra', lng: -79.933464, lat: -2.126554, description: 'María García - Calle Sucre 456' },
-                { id: '3', name: 'Soporte Técnico', lng: -79.936464, lat: -2.129554, description: 'Carlos López - Av. Quito 789' },
-                { id: '4', name: 'Cambio Modem', lng: -79.932464, lat: -2.125554, description: 'Ana Martínez - Calle Bolívar 321' },
-                { id: '5', name: 'Revisión Señal', lng: -79.937464, lat: -2.130554, description: 'Pedro Sánchez - Av. Guayaquil 654' },
-                { id: '6', name: 'Instalación TV', lng: -79.931464, lat: -2.124554, description: 'Laura Torres - Calle Flores 987' },
-                { id: '7', name: 'Mantenimiento', lng: -79.938464, lat: -2.131554, description: 'Diego Ramírez - Av. Cuenca 147' },
-                { id: '8', name: 'Configuración Red', lng: -79.930464, lat: -2.123554, description: 'Sofia Morales - Calle Olmedo 258' },
-                { id: '9', name: 'Cambio Cableado', lng: -79.939464, lat: -2.132554, description: 'Miguel Herrera - Av. Loja 369' },
-                { id: '10', name: 'Soporte WiFi', lng: -79.929464, lat: -2.122554, description: 'Carmen Ruiz - Calle Rocafuerte 741' }
-              ]
+              : []
             }
           />
         )}
@@ -205,7 +202,7 @@ const SoporteTicketsPage: React.FC = () => {
         {activeTab === 'list' && (
           <>
             {isAgendaLoading && <p>Cargando agenda de tickets...</p>}
-            {[...tickets,...agendaTickets].map((ticket, index) => (
+            {[...tickets, ...agendaTickets].map((ticket, index) => (
               <IonItem
                 key={ticket.id}
                 button

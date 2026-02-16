@@ -1,9 +1,6 @@
 import {
   IonContent,
-  IonHeader,
   IonPage,
-  IonTitle,
-  IonToolbar,
   IonCard,
   IonCardContent,
   IonCardHeader,
@@ -14,7 +11,6 @@ import {
   IonToggle,
   IonList,
   IonNote,
-  IonCheckbox,
   IonAvatar,
   IonActionSheet
 } from '@ionic/react';
@@ -27,25 +23,34 @@ import {
 import { Button } from '@/components/ui/Button';
 import { useLocation } from '@/hooks/useLocation';
 import { useAuthContext } from '@/contexts/AuthContext';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useState } from 'react';
+import apiService from '@/services/api';
 
 const UserProfilePage: React.FC = () => {
   const { error } = useLocation();
-  const { user, handleLogout, handleCuenta } = useAuthContext()
+  const { user, setUser, handleLogout, handleCuenta } = useAuthContext()
 
-const [showActionSheet,setShowActionSheet]= useState(false)
+  const [showActionSheet, setShowActionSheet] = useState(false)
 
+  // Función auxiliar para evitar código duplicado
+  const updatePushInDB = async (pushId: boolean) => {
 
+    const account = user.selectedAccount;
+
+    if (account) {
+      await apiService.request("/Users/acount/" + account.id, {
+        method: "PUT",
+        data: { isPush: pushId }
+      });
+      let newuser = await apiService.updateUser(account.id, { chatperfliid: account.accountId });
+      localStorage.setItem("user", JSON.stringify(newuser))
+      setUser(newuser)
+    }
+
+  };
 
   return (
     <IonPage>
-      <IonHeader className="ion-no-border">
-        <IonToolbar>
-          <IonTitle>Mi Perfil</IonTitle>
-        </IonToolbar>
-      </IonHeader>
-
       <IonContent className="ion-padding">
         <IonCard>
           <IonCardContent className="text-center">
@@ -54,7 +59,7 @@ const [showActionSheet,setShowActionSheet]= useState(false)
             </IonAvatar>
             <h2>{user?.name}</h2>
             <div>
-              {user?.cuenta.length > 1 && (<Button variant={"destructive"} onClick={()=>setShowActionSheet(prev=>!prev)}>
+              {user?.cuenta.length > 1 && (<Button className='bg-destructive text-destructive-foreground hover:bg-destructive/90' variant={"destructive"} onClick={() => setShowActionSheet(prev => !prev)}>
                 Cambiar Cuenta
               </Button>)}
             </div>
@@ -108,6 +113,7 @@ const [showActionSheet,setShowActionSheet]= useState(false)
                   <h3>Notificaciones</h3>
                   <p>Recibir notificaciones push</p>
                 </IonLabel>
+                <IonToggle slot='end' onIonChange={(e) => updatePushInDB(e.target.checked)} checked={user.selectedAccount.isPush}></IonToggle>
               </IonItem>
             </IonList>
           </IonCardContent>
@@ -115,24 +121,24 @@ const [showActionSheet,setShowActionSheet]= useState(false)
 
         <div className='w-full'>
           <Button
+            className='bg-destructive'
             size={"lg"}
             onClick={handleLogout}
-            variant={"link"}
+            variant={"destructive"}
 
           >
             <IonIcon icon={logOutOutline} slot="start" />
             Cerrar Sesión
           </Button>
         </div>
-        {user?.cuenta&&(<IonActionSheet
+        {user?.cuenta && (<IonActionSheet
           isOpen={showActionSheet}
           onDidDismiss={() => setShowActionSheet(false)}
-          header={"Empresa: " + user?.accounts.nombre || 'Opciones'}
+          header={"Empresa Actual: " + user?.cuenta.find((elm: any) => elm.accountId == user.perfil).account?.nombre || 'Opciones'}
           buttons={[
-            ...user?.cuenta.filter((elm:any)=>elm.accountId!==user.perfil).map((item: any) => 
-              
+            ...user?.cuenta.filter((elm: any) => elm.accountId !== user.perfil).map((item: any) =>
             ({
-              text: `Empresa: ${item.account?.nombre}`, // Usamos la propiedad 'adicion' como texto
+              text: `Empresa: ${item.account?.nombre}`,
               handler: () => {
                 handleCuenta(item.userId, item.accountId)
               }

@@ -48,6 +48,7 @@ class ApiService {
       return response.data;
     } catch (error: any) {
       localStorage.setItem("lastError", JSON.stringify(error));
+      
       if (error.response?.status === 403) {
         try {
           const refreshResponse = await axios.post(`${this.baseURL}/auth/refresh`, {}, {
@@ -80,12 +81,17 @@ class ApiService {
 
       if (error.response?.status === 401) {
         localStorage.removeItem("token");
+         localStorage.removeItem("user");
+         localStorage.clear()
         this.token = null;
-        globalThis.location.href = "/login";
+       
         throw new Error('Session expired');
       }
-
-      throw new Error(`API Error: ${error.response?.status} ${error.response?.statusText}`);
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      this.token = null;
+      globalThis.location.href = "/login";
+      throw new Error('Session expired');
     }
   }
 

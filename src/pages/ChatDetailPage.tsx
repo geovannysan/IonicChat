@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   IonContent,
   IonHeader,
@@ -17,7 +17,9 @@ import {
   IonPopover,
   IonList,
   IonItem,
-  IonLabel
+  IonLabel,
+  useIonViewWillLeave,
+  useIonViewDidEnter
 } from '@ionic/react';
 import {
   informationCircleOutline,
@@ -25,7 +27,8 @@ import {
   attachOutline,
   callOutline,
   videocamOutline,
-  ellipsisVertical
+  ellipsisVertical,
+  arrowBack
 } from 'ionicons/icons';
 import { ChatLists } from '../components/ui/chat/chat-list';
 import { useChatDetail } from '../hooks/useChatDetail';
@@ -34,35 +37,82 @@ import ChatBottombar from '@/components/ui/chat/chat-bottombar';
 import { useAuthContext } from '@/contexts/AuthContext';
 import apiService from '@/services/api';
 import { useDataStore } from '@/stores/useTicketsChat';
+import { useHistory } from 'react-router';
+import { App } from '@capacitor/app';
 
 const ChatDetailPage: React.FC = () => {
   const { user } = useAuthContext()
+  const history = useHistory()
+  const popoverRef = useRef<HTMLIonPopoverElement>(null);
   const {
     ticketChat,
     chatHistory,
-    isLoading,
+    
     scrollRef,
     handleScrolltop
   } = useChatDetail();
   const {
-    setSelectedTicketChat,
-    fetchChatHistory
+    setSelectedTicketChat, deleteChat,
+    fetchChatHistory,
+    deletteChat,isLoading
   } = useDataStore();
   const handleSubmit = async () => {
 
     try {
       let chat: any = await apiService.request("/Tickets/open/" + ticketChat.id + "/" + user.id,);
-
-
       setSelectedTicketChat(chat);
-      fetchChatHistory(chat.id,1)
-
+      //fetchChatHistory(chat.id, 1)
+      popoverRef.current?.dismiss();
 
     } catch (error) {
-
       console.error("Error al enviar:", error);
     }
   };
+  const handleClose = async () => {
+    history.replace("/tabs/chat")
+    try {
+      await apiService.request("/Tickets/" + ticketChat.id, {
+        method: 'DELETE',
+      });
+      deleteChat(ticketChat.id);
+
+
+
+    } catch (error) {
+      console.error("Error al enviar:", error);
+    }
+  };
+  const backButtonListener = useRef<any>(null);
+
+  useIonViewDidEnter(() => {
+    // Escuchamos el evento del botón atrás de Capacitor
+    // Usamos una lógica de intercepción
+    backButtonListener.current = App.addListener('backButton', ({ canGoBack }) => {
+
+      if (canGoBack) {
+        // Si la aplicación puede navegar hacia atrás, lo hacemos
+        deletteChat();
+        history.replace("/tabs/chat")
+      } else {
+        // Si no puede navegar hacia atrás, salimos de la aplicación
+        history.replace("/tabs/chat")
+      }
+
+    });
+  });
+
+  useIonViewWillLeave(() => {
+    // MUY IMPORTANTE: Limpiar el listener al salir de la página
+    if (backButtonListener.current) {
+      backButtonListener.current.remove();
+    }
+  });
+  useEffect(() => {
+    fetchChatHistory(ticketChat.id, 1)
+    return () => {
+      deletteChat();
+    }
+  }, [])
   if (!ticketChat.id) {
     return (
       <IonPage>
@@ -80,7 +130,12 @@ const ChatDetailPage: React.FC = () => {
       <IonHeader>
         <IonToolbar>
           <IonButtons slot="start">
-            <IonBackButton defaultHref="/tabs/chat" />
+            <IonButton size='small' onClick={() => {
+              history.goBack()
+              deletteChat()
+            }} >
+              <IonIcon icon={arrowBack} />
+            </IonButton>
           </IonButtons>
 
           <div className="flex items-center">
@@ -99,17 +154,17 @@ const ChatDetailPage: React.FC = () => {
               <IonIcon icon={ellipsisVertical} />
             </IonButton>
           </IonButtons>
-          <IonPopover trigger="click-trigger" triggerAction="click">
+          <IonPopover ref={popoverRef} trigger="click-trigger" triggerAction="click">
             <IonContent>
               <IonList lines="none">
-                {(ticketChat.userId === null || (user.id === ticketChat.userId) && ticketChat.status !== "open") && (
+                {(ticketChat.userId === null && ticketChat.status !== "open") && (
                   <IonItem button
                     onClick={handleSubmit}
                   >
 
                     <IonLabel> Abrir</IonLabel>
                   </IonItem>)}
-                {(ticketChat.status === "open" || (user.id === ticketChat.userId)) && (<IonItem button >
+                {(ticketChat.status === "open" && (user.id === ticketChat.userId)) && (<IonItem button onClick={handleClose} >
 
                   <IonLabel>  Resolver</IonLabel>
                 </IonItem>)}

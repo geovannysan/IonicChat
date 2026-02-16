@@ -24,9 +24,10 @@ interface DataStore {
   addChatnotify: (chat: INotificatyion) => void
   deleteChat: (id: number) => void;
   deleteNotify: (id: string) => void;
+  deletteChat: () => void;
   setSelectedTicketChat: (user: ChatItem) => void;
   setPageNumber: (id: number) => Promise<void>;
-  addMessage:(msg:any) => void
+  addMessage: (msg: any) => void
 }
 
 export const useDataStore = create<DataStore>((set) => ({
@@ -46,7 +47,7 @@ export const useDataStore = create<DataStore>((set) => ({
     createdAt: '',
     updatedAt: '',
     ChatPerfil: {
-      id:0,
+      id: 0,
       conexionID: 0,
       conexiontype: {
         id: 0,
@@ -75,7 +76,7 @@ export const useDataStore = create<DataStore>((set) => ({
   fetchTickestmas: async (id) => {
     set({ isLoading: true, error: null })
     try {
-      const  data:any  = await apiService.getTicketsList(id)
+      const data: any = await apiService.getTicketsList(id)
       const { ticket, hasMore, count } = data
       set((state) => {
         return { chats: [...state.chats, count, ...ticket], isLoading: false }
@@ -91,30 +92,34 @@ export const useDataStore = create<DataStore>((set) => ({
   fetchUsers: async (id) => {
     set({ isLoading: true, error: null })
     try {
-      const  data:any  = await apiService.getTicketsList(id)
+      const data: any = await apiService.getTicketsList(id)
       const { ticket, count, hasMore } = data
       set((state) => {
-        const merged = [...state.chats, ...ticket]
-        const unique = merged.filter(
-          (item, index, self) => index === self.findIndex(t => t.id === item.id)
-        )
-        return { chats: unique, isLoading: false }
+
+        return { chats: ticket, isLoading: false }
       })
       set({ count: count, hasMore: hasMore })
     } catch (error: any) {
       set({ error: error.message || 'Error desconocido', isLoading: false })
     }
   },
+  deletteChat: () => {
+    set({
+      chatHistory: [], isLoading: true
+    })
+  },
+
   fetchChatHistory: async (contactId, id) => {
     set({ isLoading: true, error: null })
     try {
-      const  data:any  = await apiService.getChatHistory(contactId, id)
-      const { messages:chat, count, hasMore } = data
-      
-      set((state) => {
-        
-        return { chatHistory: chat, isLoading: false }
+      const data: any = await apiService.getChatHistory(contactId, id)
+      const { messages: chat, count, hasMore } = data
+
+      set({
+        chatHistory: chat, isLoading: false
       })
+
+
       set({ countchat: count, hasMorechat: hasMore })
     } catch (error: any) {
       set({ error: error.message || 'Error desconocido', isLoading: false })
@@ -123,11 +128,11 @@ export const useDataStore = create<DataStore>((set) => ({
   fetchChatHistoryAdd: async (contactId, id) => {
     set({ isLoading: true, error: null })
     try {
-      const  data:any  = await apiService.getChatHistory(contactId, id)
-      const { messages:chat, count, hasMore } = data
-      
+      const data: any = await apiService.getChatHistory(contactId, id)
+      const { messages: chat, count, hasMore } = data
+
       set((state) => {
-        
+
         return { chatHistory: [...chat, ...state.chatHistory], isLoading: false }
       })
       set({ countchat: count, hasMorechat: hasMore })
@@ -154,7 +159,7 @@ export const useDataStore = create<DataStore>((set) => ({
           createdAt: '',
           updatedAt: '',
           ChatPerfil: {
-            id:0,
+            id: 0,
             conexionID: 0,
             conexiontype: {
               id: 0,
@@ -201,7 +206,7 @@ export const useDataStore = create<DataStore>((set) => ({
         createdAt: '',
         updatedAt: '',
         ChatPerfil: {
-          id:0,
+          id: 0,
           conexionID: 0,
           conexiontype: {
             id: 0,
@@ -219,34 +224,33 @@ export const useDataStore = create<DataStore>((set) => ({
           updatedAt: '',
           extraInfo: []
         }
-      }
+      },
+      isLoading: true
     })    // Limpia
     set({ ticketChat: ticket })// Luego asigna
-    try {
-      const  data:any  = await apiService.getChatHistory(ticket?.contactId, 1)
-      const { chat, count, hasMore } = data
-      set({ chatHistory: chat, isLoading: false })
-      set({ countchat: count, hasMorechat: hasMore })
-    } catch (error: any) {
-      set({ error: error.message || 'Error desconocido', isLoading: false })
-    }
+    
 
   },
 
-  addChatTickte: (chat) =>
+  addChatTickte: (chat) => {
     set((state) => {
       const exists = state.chats.some((c) => c.id === chat.id);
+      const nuevos = exists
+        ? state.chats.map((c) => (c.id === chat.id ? chat : c)) // reemplaza si existe
+        : [chat, ...state.chats,]
+      return {
+        chats: nuevos
+        ,
+      };
+    })
+    set((state) => {
       const exits = state.ticketChat.id === chat.id;
       return {
         ticketChat: exits ? { ...chat, Contact: { ...chat.Contact } } : state.ticketChat,
-        chats: exists
-          ? state.chats.map((c) => (c.id === chat.id ? chat : c)) // reemplaza si existe
-          : [...state.chats, chat],
-        count: exists
-          ? state.chats.map((c) => (c.id === chat.id ? chat : c)).length // reemplaza si existe
-          : [...state.chats, chat].length
+
       };
-    }),
+    })
+  },
   addChatnotify: (chat) =>
     set((state) => {
       const exists = state.notify.some((c) => c.id === chat.id);
@@ -256,7 +260,7 @@ export const useDataStore = create<DataStore>((set) => ({
           : [...state.notify, chat]
       }
     }),
-  addMessage: (message:any) =>
+  addMessage: (message: any) =>
     set((state) => {
       const exists = state.chatHistory.some((m) => m.id === message.id);
       const updated = exists
@@ -274,7 +278,7 @@ export interface ConexionType {
 
 export interface ChatPerfil {
   conexionID: number,
-  id:number
+  id: number
   name?: string
   conexiontype: ConexionType
 }
@@ -307,7 +311,7 @@ export interface ChatItem {
   updatedAt: string
   ChatPerfil: ChatPerfil
   Contact: Contact
-  Teams?:Team
+  Teams?: Team
   User?: User
 }
 

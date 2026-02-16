@@ -52,8 +52,8 @@ export default function ChatBottombar({ selectedUser, user }: Readonly<ChatBotto
   const [pastedFilePreviewUrl, setPastedFilePreviewUrl] = useState<string | null>(null);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
-  
-  
+
+
 
 
 
@@ -134,38 +134,47 @@ export default function ChatBottombar({ selectedUser, user }: Readonly<ChatBotto
     setIsLoading(true);
     try {
       if (pastedFile) {
-        const formData = new FormData();
-        formData.append("medias", pastedFile, pastedFile.name);
-        formData.append("body", message.trim());
-        formData.append("ticketid", selectedUser.id.toString());
-        formData.append("fromMe", "1");
-        formData.append("contactId", selectedUser.contactId.toString());
+        const reader = new FileReader();
+        reader.readAsDataURL(pastedFile);
 
-        await apiService.request("/Chat", {
-          method: 'POST',
-          data: formData,
-          headers: { "Content-Type": "multipart/form-data" }
-        });
-        resetInput();
-      } else if (audioBlob) {
-        const formData = new FormData();
-        formData.append("medias", new File([audioBlob], "audio.ogg", { type: "audio/ogg" }));
-        formData.append("body", '');
-        formData.append("ticketid", selectedUser.id.toString());
-        formData.append("fromMe", "1");
-        formData.append("contactId", selectedUser.contactId.toString());
+        reader.onloadend = async () => {
+          const base64String = reader.result;
 
-         apiService.request("/Chat", {
-          method: 'POST',
-          data: formData,
-          headers: { "Content-Type": "multipart/form-data" }
-        }).then(() => {
+          const payload = {
+            medias: base64String,
+            fileName: pastedFile.name,
+            body: message.trim(),
+            ticketid: selectedUser.id.toString(),
+            fromMe: "1",
+            contactId: selectedUser.contactId.toString()
+          };
+          await apiService.request("/api/v1/Chat", {
+            method: 'POST',
+            data: payload,
+            headers: { "Content-Type": "application/json" }
+          });
+          resetInput();
         }
-        ).catch((error) => {
-          console.error("Error sending audio message", error);
-        });
-
-        resetInput();
+      } else if (audioBlob) {
+        const reader = new FileReader();
+        reader.readAsDataURL(audioBlob);
+        reader.onloadend = async () => {
+          const base64String = reader.result;
+          const payload = {
+            medias: base64String,
+            fileName: `audio-${Date.now()}.ogg`,
+            body: message.trim(),
+            ticketid: selectedUser.id.toString(),
+            fromMe: "1",
+            contactId: selectedUser.contactId.toString()
+          };
+          await apiService.request("/api/v1/Chat", {
+            method: 'POST',
+            data: payload,
+            headers: { "Content-Type": "application/json" }
+          });
+          resetInput();
+        }
       } else if (message.trim()) {
         const info = {
           ticketid: selectedUser.id.toString(),
@@ -178,10 +187,10 @@ export default function ChatBottombar({ selectedUser, user }: Readonly<ChatBotto
           data: info,
         });
 
-       resetInput();
+        resetInput();
       }
     } catch (error) {
-     
+
       console.error("Error sending message", error);
       return
     } finally {
@@ -206,7 +215,7 @@ export default function ChatBottombar({ selectedUser, user }: Readonly<ChatBotto
     }
   };
 
-  
+
 
   const cancelPreview = () => {
     setPastedFile(null);
@@ -216,7 +225,7 @@ export default function ChatBottombar({ selectedUser, user }: Readonly<ChatBotto
     }
   };
 
- 
+
 
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60)

@@ -38,6 +38,7 @@ import { useHistory } from 'react-router';
 import { useAutoScroll } from '@/hooks/useAutoScroll';
 import { Button } from '@/components/ui/Button';
 import { ArrowDown } from 'lucide-react';
+import { useAuthContext } from '@/contexts/AuthContext';
 
 const ContactListPage: React.FC = () => {
   const {
@@ -47,11 +48,10 @@ const ContactListPage: React.FC = () => {
     isLoading,
   } = useContactStore();
   let history = useHistory()
+  useAuthContext()
   const [searchTerm, setSearchTerm] = useState("");
   const [pageNumber, setPageNumber] = useState(1);
   const [searchResults, setSearchResults] = useState<any[]>([]);
-  const [showActionSheet, setShowActionSheet] = useState(false);
-  const [selectedContact, setSelectedContact] = useState<any>(null);
   const [isAtBottom, setIsAtBottom] = useState(true);
   const scrollRef = useRef<any>(null);
   const actualRef = scrollRef
@@ -125,37 +125,26 @@ const ContactListPage: React.FC = () => {
     scrollRef.current?.scrollToTop(300);
   };
 
-  const handleContactAction = (contact: any, action: string) => {
-    setSelectedContact(contact);
-    setShowActionSheet(false);
-    setIsAtBottom(false)
-    handleContactSelect(contact);
-  };
-
 
   return (
     <IonPage>
       <IonHeader className="ion-no-border">
         <IonToolbar>
           <IonTitle>Contactos</IonTitle>
-          <IonButtons slot="end">
-            <IonButton>
-              <IonIcon icon={addOutline} />
-            </IonButton>
-          </IonButtons>
+
         </IonToolbar>
       </IonHeader>
-
+      <IonSearchbar
+        value={searchTerm}
+        onIonInput={(e) => handleSearch(e.detail.value!)}
+        placeholder="Buscar contactos... (mín. 3 caracteres)"
+        showClearButton="focus"
+        debounce={500}
+      />
       <IonContent ref={scrollRef} onIonScroll={handleScroll} scrollEvents={true}>
 
 
-        <IonSearchbar
-          value={searchTerm}
-          onIonInput={(e) => handleSearch(e.detail.value!)}
-          placeholder="Buscar contactos... (mín. 3 caracteres)"
-          showClearButton="focus"
-          debounce={500}
-        />
+
 
         {sortedContacts.length === 0 && !isLoading ? (
           <div className="flex flex-col items-center justify-center h-64 text-center p-4">
@@ -179,7 +168,7 @@ const ContactListPage: React.FC = () => {
           <IonList ref={actualRef}>
             {sortedContacts.map((contact, index) => (
               <IonItem
-                key={contact.id}
+                key={"contactos" + index}
                 button
                 onClick={() => handleContactSelect(contact)}
                 className="contact-item"
@@ -212,17 +201,7 @@ const ContactListPage: React.FC = () => {
                   </div>
                 </IonLabel>
                 <div className="flex items-center gap-1" slot="end">
-                  <IonButton
-                    fill="clear"
-                    size="small"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedContact(contact);
-                      setShowActionSheet(true);
-                    }}
-                  >
-                    <IonIcon icon={ellipsisVerticalOutline} size="small" />
-                  </IonButton>
+
                 </div>
 
               </IonItem>
@@ -260,32 +239,7 @@ const ContactListPage: React.FC = () => {
         </IonFab>)}
       </IonContent>
 
-      <IonActionSheet
-        isOpen={showActionSheet}
-        onDidDismiss={() => setShowActionSheet(false)}
-        header={selectedContact?.name || 'Opciones'}
-        buttons={[
-          {
-            text: 'Iniciar Chat',
-            icon: chatbubbleOutline,
-            handler: () => handleContactAction(selectedContact, 'chat')
-          },
-          {
-            text: 'Ver Detalles',
-            icon: personOutline,
-            handler: () => handleContactAction(selectedContact, 'view')
-          },
-          {
-            text: 'Llamar',
-            icon: callOutline,
-            handler: () => handleContactAction(selectedContact, 'call')
-          },
-          {
-            text: 'Cancelar',
-            role: 'cancel'
-          }
-        ]}
-      />
+
     </IonPage>
   );
 };

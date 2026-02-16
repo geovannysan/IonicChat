@@ -236,7 +236,7 @@ function MapContent({
                 <p className="text-xs text-muted-foreground">{location.description}</p>
               )}
               <p className="text-xs font-semibold text-blue-600">
-                📍 {location.distance.toFixed(2)} km
+                 {location.distance.toFixed(2)} km
               </p>
               <p className="text-xs text-muted-foreground">
                 {location.lat.toFixed(4)}, {location.lng.toFixed(4)}
@@ -277,7 +277,7 @@ export function DraggableMarkerExample({
   locations?: LocationDetail[];
 }>) {
   const [userLocation, setUserLocation] = useState({ lng, lat });
-  const [showRoutes, setShowRoutes] = useState(true);
+  const [showRoutes, setShowRoutes] = useState(false);
 
   useEffect(() => {
     setUserLocation({ lng, lat });

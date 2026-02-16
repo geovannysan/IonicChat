@@ -1,13 +1,16 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.example.app',
-  appName: 'chat-ionic',
+  appId: 'com.healpchat.app',
+  appName: 'healpchat',
   webDir: 'dist',
   plugins: {
     CapacitorHttp: {
       enabled: true,
     },
+    PushNotifications:{
+      presentationOptions:["badge","sound","alert"]
+    }
   },
   "server": {
     "cleartext": true,

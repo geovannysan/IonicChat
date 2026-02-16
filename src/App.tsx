@@ -7,6 +7,7 @@ import {
   IonTabBar,
   IonTabButton,
   IonTabs,
+  isPlatform,
   setupIonicReact
 } from '@ionic/react';
 import { IonReactRouter } from '@ionic/react-router';
@@ -32,7 +33,7 @@ import LoginPage from './pages/LoginPage';
 import { PrivateRoute } from './components/PrivateRoute';
 
 // Contexts
-import { AuthProvider } from './contexts/AuthContext';
+import { AuthProvider, useAuthContext } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 
 // Hooks
@@ -54,12 +55,31 @@ import './theme/variables.css';
 import './theme/chat.css';
 import { useLocation } from './hooks/useLocation';
 import ChatHistorialPage from './pages/ChatHistoryPage';
+import { StatusBar, Style } from '@capacitor/status-bar';
+import { useEffect } from 'react';
+
+const setStatusBarStyle = async () => {
+  if (isPlatform('capacitor')) {
+    // Cambiar el color de fondo (Solo Android)
+    await StatusBar.setBackgroundColor({ color: '#3880ff' }); // Usa tu color hexadecimal
+
+    // Cambiar el estilo de los iconos (Hora, Batería, etc.)
+    // Style.Default: Iconos oscuros (para fondos claros)
+    // Style.Dark: Iconos claros (para fondos oscuros)
+    await StatusBar.setStyle({ style: Style.Dark });
+  }
+};
+
+// Dentro de tu componente App
 
 setupIonicReact();
 
 const AppContent: React.FC = () => {
-  // usePushNotifications();
   useLocation();
+  useAuthContext();
+  useEffect(() => {
+    setStatusBarStyle();
+  }, []);
 
   return (
     <IonReactRouter>

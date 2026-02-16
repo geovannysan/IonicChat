@@ -96,7 +96,7 @@ function ChatListComponent({ messages, onScroll, scrollRef, loading, history = f
               )}
             </ChatBubbleMessage>
 
-            {history && (
+            {!history && (
               <ChatBubbleActionWrapper>
                 {actionIcons.map(({ icon: Icon, type }) => (
                   <ChatBubbleAction
@@ -125,5 +125,6 @@ function ChatListComponent({ messages, onScroll, scrollRef, loading, history = f
 
 export const ChatLists = memo(
   ChatListComponent,
-  (prevProps, nextProps) => prevProps.messages === nextProps.messages
+  (prevProps, nextProps) => prevProps.messages === nextProps.messages,
+  
 );

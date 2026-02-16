@@ -4,6 +4,7 @@ import { useHistory } from "react-router-dom";
 import { useDataStore, type ChatItem } from "../stores/useTicketsChat";
 import apiService from "@/services/api";
 import connectToSocket from "@/services/socket";
+import { App } from "@capacitor/app";
 const playNotificationSound = () => {
     try {
         const audioContext = new (globalThis.AudioContext || (globalThis as any).webkitAudioContext)();
@@ -87,7 +88,7 @@ export const useAuth = () => {
     useEffect(() => {
         const token = localStorage.getItem("token");
         const users = localStorage.getItem("user")
-        if (token) {
+        if (users && token) {
             (async () => {
                 try {
 
@@ -95,8 +96,14 @@ export const useAuth = () => {
 
                     setIsAuth(true);
                     setLoading(false);
-                    history.push("/tabs/chat");
+                    // globalThis.location.href = "/tabs/chat"
                     setUser(JSON.parse(users ?? ""))
+                    await apiService.request("/Users/acount/" + user.cuenta.find((el: any) => el.accountId == user.perfil).id, {
+                        method: "PUT",
+                        data: {
+                            idWorkspace: localStorage.getItem("pushId")
+                        }
+                    })
                 } catch (err: any) {
                     const errorData = err?.response?.data;
                     if (errorData?.mensaje === "ERR_SESSION_EXPIRED" ||
@@ -104,14 +111,14 @@ export const useAuth = () => {
                         localStorage.removeItem("token");
                         setIsAuth(false);
                         setLoading(false);
-                        history.push("/login");
+                        globalThis.location.href = "/"
                     }
                 }
             })();
         } else {
             setLoading(false);
         }
-    }, [history]);
+    }, []);
 
     // Configurar socket cuando el usuario esté autenticado
     useEffect(() => {
@@ -124,32 +131,42 @@ export const useAuth = () => {
 
         const socket = currentRoomRef.current;
 
-        socket.on("user", (data: any) => {
+        const handleUser = (data: any) => {
             if (data.action === "update" && data.user.id === user.id) {
                 setUser(data.user);
             }
-        });
+        };
+        const handleAppStateChange = ({ isActive }: { isActive: boolean }) => {
+            if (isActive) {
+                console.log("App activa: verificando socket...");
+                if (!socket.connected) {
+                    socket.connect(); // Fuerza la reconexión al volver
+                }
+            }
+        };
 
-        socket.on("chatcerrar", (data: any) => {
+        // Registramos el listener de Capacitor
+        const appStateListener = App.addListener('appStateChange', handleAppStateChange);
+        const handleChatCerrar = (data: any) => {
             if (data.action === "delete") {
                 deleteChat(Number(data.ticket));
                 setTicketChats({ id: 0 } as ChatItem);
                 deleteNotify(data.ticket + "-message");
             }
-        });
+        };
 
-        socket.on("connect", () => {
+        const handleConnect = () => {
             socket.emit("joinChatList");
-        });
+        };
 
-        socket.on("tickemesa", (data: any) => {
+        const handleTickemesa = (data: any) => {
+            console.log("tickemesa recibido:", data);
             if (data.ticket) {
                 addChatTickte(data.ticket);
             }
             if (data.notify) {
                 const { Ticket: ticket, fromMe } = data.notify;
                 if (fromMe || ticket.userId !== user.id) return;
-
                 const notify = {
                     "id": ticket.id + "-message",
                     "body": ticket.lastMessage,
@@ -160,12 +177,23 @@ export const useAuth = () => {
                 addChatnotify(notify);
                 playNotificationSound();
             }
-        });
+        };
+
+        socket.on("user", handleUser);
+        socket.on("chatcerrar", handleChatCerrar);
+        socket.on("connect", handleConnect);
+        socket.on("tickemesa", handleTickemesa);
+
+        if (socket.connected) {
+            socket.emit("joinChatList");
+        }
 
         return () => {
-            if (currentRoomRef.current) {
-                currentRoomRef.current.disconnect();
-            }
+            socket.off("user", handleUser);
+            socket.off("chatcerrar", handleChatCerrar);
+            socket.off("connect", handleConnect);
+            socket.off("tickemesa", handleTickemesa);
+            appStateListener.then(l => l.remove());
         };
     }, [user, addChatTickte, addChatnotify, deleteChat, deleteNotify]);
 
@@ -276,6 +304,7 @@ export const useAuth = () => {
         setTicketChats,
         anality,
         messagesState,
-        setMessagesState
+        setMessagesState,
+        addChatTickte, addChatnotify, deleteChat, deleteNotify
     };
 };
