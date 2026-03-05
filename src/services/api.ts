@@ -87,10 +87,6 @@ class ApiService {
        
         throw new Error('Session expired');
       }
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
-      this.token = null;
-      globalThis.location.href = "/login";
       throw new Error('Session expired');
     }
   }

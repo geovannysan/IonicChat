@@ -56,10 +56,10 @@ import './theme/chat.css';
 import { useLocation } from './hooks/useLocation';
 import ChatHistorialPage from './pages/ChatHistoryPage';
 import { StatusBar, Style } from '@capacitor/status-bar';
-import { useEffect } from 'react';
+import {  useLayoutEffect } from 'react';
 
 const setStatusBarStyle = async () => {
-  if (isPlatform('capacitor')) {
+  if (isPlatform('android')) {
     // Cambiar el color de fondo (Solo Android)
     await StatusBar.setBackgroundColor({ color: '#3880ff' }); // Usa tu color hexadecimal
 
@@ -77,7 +77,7 @@ setupIonicReact();
 const AppContent: React.FC = () => {
   useLocation();
   useAuthContext();
-  useEffect(() => {
+  useLayoutEffect(() => {
     setStatusBarStyle();
   }, []);
 

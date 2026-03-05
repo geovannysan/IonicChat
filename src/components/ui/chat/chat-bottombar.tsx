@@ -8,6 +8,7 @@ declare global {
 import React, { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { base64ToFileAuto, cn } from "../../../lib/utils";
+import { VoiceRecorder } from 'capacitor-voice-recorder';
 import {
   FileImage,
   Mic,
@@ -23,6 +24,7 @@ import { apiService } from "../../../services/api";
 import { IonIcon, IonInput } from "@ionic/react";
 import { Button, buttonVariants } from "../Button";
 import { MediaPreview } from "../Mediapreview";
+import { createPortal } from "react-dom";
 
 interface ChatBottombarProps {
   isMobile: boolean;
@@ -53,43 +55,11 @@ export default function ChatBottombar({ selectedUser, user }: Readonly<ChatBotto
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
 
-
-
-
-
   const startRecording = async () => {
-    setIsRecording(true);
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaStreamRef.current = stream;
-
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const input = audioContext.createMediaStreamSource(stream);
-
-      const recorder = new (window as any).WebAudioRecorder(input, {
-        workerDir: "/",
-        encoding: "ogg",
-        numChannels: 1,
-        onEncoderLoading: () => ("Cargando encoder..."),
-        onEncoderLoaded: () => ("Encoder cargado"),
-      });
-
-      recorder.setOptions({
-        timeLimit: 120,
-        encodeAfterRecord: true,
-        ogg: { quality: 0.5 },
-      });
-
-      recorder.onComplete = (_rec: any, blob: Blob) => {
-        const url = URL.createObjectURL(blob);
-        setAudioBlob(blob);
-        setAudioUrl(url);
-        setIsRecording(false);
-      };
-
-      recorder.startRecording();
-      mediaRecorderRef.current = recorder;
-
+      await VoiceRecorder.requestAudioRecordingPermission();
+      await VoiceRecorder.startRecording();
+      setIsRecording(true);
       setRecordingTime(0);
 
       intervalRef.current = setInterval(() => {
@@ -101,18 +71,23 @@ export default function ChatBottombar({ selectedUser, user }: Readonly<ChatBotto
     }
   };
 
-  const stopRecording = () => {
-    if (mediaRecorderRef.current?.finishRecording) {
-      mediaRecorderRef.current.finishRecording();
-    }
+  const stopRecording = async () => {
+    try {
+      const result = await VoiceRecorder.stopRecording();
 
-    setIsRecording(false);
+      if (intervalRef.current) clearInterval(intervalRef.current);
 
-    if (intervalRef.current) clearInterval(intervalRef.current);
+      if (result.value?.recordDataBase64) {
+        const blob = base64ToFileAuto(result.value.recordDataBase64);
+        const url = URL.createObjectURL(blob);
+        setAudioBlob(blob);
+        setAudioUrl(url);
+      }
 
-    if (mediaStreamRef.current) {
-      mediaStreamRef.current.getTracks().forEach((track: any) => track.stop());
-      mediaStreamRef.current = null;
+      setIsRecording(false);
+    } catch (err) {
+      console.error("Error stopping recording", err);
+      setIsRecording(false);
     }
   };
 
@@ -284,7 +259,7 @@ export default function ChatBottombar({ selectedUser, user }: Readonly<ChatBotto
   }, [message]);
 
   if (pastedFile) {
-    return (
+    const previewContent = (
       <div className="fixed inset-0 z-50 flex flex-col bg-background/80 backdrop-blur-sm">
         <div className="flex justify-end p-2">
           <Button
@@ -336,6 +311,7 @@ export default function ChatBottombar({ selectedUser, user }: Readonly<ChatBotto
         </div>
       </div>
     );
+    return createPortal(previewContent, document.body);
   }
 
 
@@ -461,4 +437,3 @@ export default function ChatBottombar({ selectedUser, user }: Readonly<ChatBotto
     </>
   );
 }
-

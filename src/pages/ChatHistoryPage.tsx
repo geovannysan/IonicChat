@@ -42,7 +42,7 @@ const ChatHistorialPage: React.FC = () => {
     setMore(hasMore)
     setLoading(false)
     setTimeout(() => {
-      if (scrollRef.current && scrollRef.current.scrollHeight) {
+      if (scrollRef.current?.scrollHeight) {
         scrollRef.current.scrollTop = scrollRef.current.scrollHeight / 2;
       }
     }, 100);
@@ -64,7 +64,7 @@ const ChatHistorialPage: React.FC = () => {
       setMesagehistory([...messages, ...mensajehistory] as any)
       setMore(hasMore)
       setTimeout(() => {
-        if (scrollRef.current && scrollRef.current.scrollHeight) {
+        if (scrollRef.current?.scrollHeight) {
           scrollRef.current.scrollTop = scrollRef.current.scrollHeight / 2;
         }
       }, 100);

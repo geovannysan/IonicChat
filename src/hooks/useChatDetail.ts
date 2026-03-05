@@ -91,6 +91,7 @@ export const useChatDetail = () => {
     
     if (Number(id) !== 0 && id != null) {
       socket.emit("joinChatBox", String(id));
+      console.log("Conectado al chat:", id);
     }
 
     return () => {

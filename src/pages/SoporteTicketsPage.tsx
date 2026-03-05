@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import {
   IonButton,
   IonContent,
+  IonDatetime,
   IonIcon,
   IonItem, // IonInput removed as it's not needed for userId filter
   IonLabel,
@@ -179,8 +180,8 @@ const SoporteTicketsPage: React.FC = () => {
             locations={agendaTickets.length > 0
               ? agendaTickets
                 .filter(t => {
-                  const lat = parseFloat(t.latitude??"");
-                  const lng = parseFloat(t.longitude??"");
+                  const lat = parseFloat(t.latitude ?? "");
+                  const lng = parseFloat(t.longitude ?? "");
                   return (
                     !isNaN(lat) && lat >= -90 && lat <= 90 &&
                     !isNaN(lng) && lng >= -180 && lng <= 180 &&
@@ -190,8 +191,8 @@ const SoporteTicketsPage: React.FC = () => {
                 .map(t => ({
                   id: String(t.id),
                   name: t.subject || 'Sin asunto',
-                  lng:  parseFloat(t.latitude??""),
-                  lat: parseFloat(t.longitude??""),
+                  lng: parseFloat(t.latitude ?? ""),
+                  lat: parseFloat(t.longitude ?? ""),
                   description: `${t.requesterName} - ${t.address || 'Sin dirección'}`
                 }))
               : []
@@ -259,7 +260,10 @@ const SoporteTicketsPage: React.FC = () => {
               ></IonToggle>
             </IonItem>
             <IonItem>
-              <DateRangePicker date={dateRange} setDate={setDateRange} />
+              <DateRangePicker  date={dateRange} setDate={setDateRange} 
+              
+              />
+           
             </IonItem>
             <IonItem>
               <IonButton expand="block" onClick={() => fetchAgendaTickets(filterMine, dateRange)}>

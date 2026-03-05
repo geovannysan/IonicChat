@@ -47,14 +47,14 @@ const ChatDetailPage: React.FC = () => {
   const {
     ticketChat,
     chatHistory,
-    
+
     scrollRef,
     handleScrolltop
   } = useChatDetail();
   const {
     setSelectedTicketChat, deleteChat,
     fetchChatHistory,
-    deletteChat,isLoading
+    deletteChat, isLoading
   } = useDataStore();
   const handleSubmit = async () => {
 
@@ -184,9 +184,13 @@ const ChatDetailPage: React.FC = () => {
 
 
 
-      <div className="flex items-center gap-2">
-        <ChatBottombar selectedUser={ticketChat} user={user} isMobile={true} />
-        {/* <IonButton fill="clear" size="small" className="flex-shrink-0">
+      <IonFooter>
+        <IonToolbar>
+
+          <ChatBottombar selectedUser={ticketChat} user={user} isMobile={true} />
+        </IonToolbar>
+      </IonFooter>
+      {/* <IonButton fill="clear" size="small" className="flex-shrink-0">
               <IonIcon icon={attachOutline} color="medium" />
             </IonButton>
 
@@ -214,11 +218,11 @@ const ChatDetailPage: React.FC = () => {
             >
               <IonIcon icon={sendOutline} />
             </IonButton> */}
-      </div>
+
 
 
       {/* ... IonModal ... */}
-    </IonPage>
+    </IonPage >
   );
 };
 

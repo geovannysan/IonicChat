@@ -42,7 +42,7 @@ const UserProfilePage: React.FC = () => {
         method: "PUT",
         data: { isPush: pushId }
       });
-      let newuser = await apiService.updateUser(account.id, { chatperfliid: account.accountId });
+      let newuser = await apiService.updateUser(user.id, { chatperfliid: account.accountId });
       localStorage.setItem("user", JSON.stringify(newuser))
       setUser(newuser)
     }
