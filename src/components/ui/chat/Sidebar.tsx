@@ -143,16 +143,16 @@ export function Sidebar({ chats, onSelectUser }: SidebarProps) {
 function SoftBadgeDemo ({status}:{status:string}){
   return (
     <div className="flex items-center gap-3 flex-wrap">
-       { status === "pending" &&<Badge className="bg-amber-600/10 dark:bg-amber-600/20 hover:bg-amber-600/10 text-amber-500 shadow-none rounded-full">
+       { status === "pending" &&<Badge className="bg-transparent  dark:bg-transparent hover:bg-amber-600/10 text-amber-500 shadow-none rounded-full">
         <div className="h-1.5 w-1.5 rounded-full bg-amber-500 mr-2" /> Pendiente
       </Badge>}
-     {status === "assigned" && <Badge className="bg-red-600/10 dark:bg-red-600/20 hover:bg-red-600/10 text-red-500 shadow-none rounded-full">
+     {status === "assigned" && <Badge className="bg-transparent  dark:bg-transparent hover:bg-red-600/10 text-red-500 shadow-none rounded-full">
         <div className="h-1.5 w-1.5 rounded-full bg-red-500 mr-2" /> Asignada
       </Badge>}
-    {status === "open" &&  <Badge className="bg-emerald-600/10 dark:bg-emerald-600/20 hover:bg-emerald-600/10 text-emerald-500 shadow-none rounded-full">
+    {status === "open" &&  <Badge className="bg-transparent  dark:bg-transparent hover:bg-emerald-600/10 text-emerald-500 shadow-none rounded-full">
         <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 mr-2" /> Abierta
       </Badge>}
-       {status === "completed" && <Badge className="bg-red-600/10 dark:bg-red-600/20 hover:bg-red-600/10 text-red-500 shadow-none rounded-full">
+       {status === "completed" && <Badge className="bg-transparent  dark:bg-transparent hover:bg-red-600/10 text-red-500 shadow-none rounded-full">
         <div className="h-1.5 w-1.5 rounded-full bg-red-500 mr-2" /> Completada
       </Badge>}
     </div>

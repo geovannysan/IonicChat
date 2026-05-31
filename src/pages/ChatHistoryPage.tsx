@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import React, { useEffect,  useRef, useState } from 'react';
 import {
   IonContent,
   IonHeader,
@@ -7,10 +7,7 @@ import {
   IonTitle,
   IonToolbar,
   IonButtons,
-  IonButton,
-  IonIcon,
   IonText,
-  IonSpinner,
   IonBackButton,
 } from '@ionic/react';
 import { ChatLists } from '../components/ui/chat/chat-list';
@@ -29,7 +26,7 @@ const ChatHistorialPage: React.FC = () => {
   const [pageNumberchat, setPageNumberchat] = useState(1);
   const [hasMores, setMore] = useState(false)
   const [mensajehistory, setMesagehistory] = useState([])
-
+ const timerRef = useRef<NodeJS.Timeout | null>(null);
   const loadMores = async () => {
     if (!hasMores) return
     setLoading(true)
@@ -63,13 +60,18 @@ const ChatHistorialPage: React.FC = () => {
       const { messages, hasMore } = data
       setMesagehistory([...messages, ...mensajehistory] as any)
       setMore(hasMore)
-      setTimeout(() => {
+    timerRef.current =   setTimeout(() => {
         if (scrollRef.current?.scrollHeight) {
           scrollRef.current.scrollTop = scrollRef.current.scrollHeight / 2;
         }
       }, 100);
     }
     nuevos()
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+      }
+    }
   }, [])
 
   return (
@@ -100,6 +102,7 @@ const ChatHistorialPage: React.FC = () => {
           onScroll={handleScroll}
           loading={loading}
           scrollRef={scrollRef}
+          type={3}
         />
       </IonContent>
 

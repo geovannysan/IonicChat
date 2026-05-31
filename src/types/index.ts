@@ -9,7 +9,7 @@ export interface Contact {
   id: number;
   name: string;
   number: string;
-  profilePicURl: string | null;
+  profilePicUrl?: string | null;
   typeContact: string;
   isGroup: boolean;
   createdAt: string;
@@ -33,6 +33,7 @@ export interface Message {
   contactid: string | null;
   userId: string | null;
   Contacts?: Contact;
+  contact?: Contact;
   quotedMsg?: Message;
   isLoading?: boolean;
 }
@@ -192,7 +193,7 @@ export interface SoporteTicket {
   createdBy?: number | null;
   createdAt: Date;
   updatedAt: Date;
-  "adjuntos": []
+  "adjuntos": { createdAt: Date;}[]
   "mensajes": []
   "asignasio": []
 }

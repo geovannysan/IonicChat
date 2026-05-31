@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import * as React from "react";
 import { ArrowDown, LoaderCircle } from "lucide-react";
@@ -7,14 +7,14 @@ import { Button } from "../Button";
 
 interface ChatMessageListProps extends React.HTMLAttributes<HTMLDivElement> {
   loading: boolean;
-  scrollRef?: React.RefObject<HTMLDivElement>;
+  scrollRef?: React.RefObject<HTMLDivElement> | null;
+  type?: string | number;
 }
 
 const ChatMessageList = React.forwardRef<HTMLDivElement, ChatMessageListProps>(
-  ({ className, children, onScroll, loading, scrollRef, ...props }, _ref) => {
+  ({ className, children, onScroll, loading, scrollRef, type, ...props }, _ref) => {
       const { containerRef, isAtBottom, scrollToBottom } = useAutoScroll([children], scrollRef);
     
-    // Usar scrollRef si se proporciona, de lo contrario usar containerRef
     const actualRef = scrollRef || containerRef;
 
     return (

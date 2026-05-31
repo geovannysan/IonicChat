@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef} from 'react';
 import {
   IonContent,
   IonHeader,
@@ -10,10 +10,8 @@ import {
   IonButton,
   IonIcon,
   IonText,
-  IonInput,
   IonFooter,
   IonSpinner,
-  IonBackButton,
   IonPopover,
   IonList,
   IonItem,
@@ -22,11 +20,6 @@ import {
   useIonViewDidEnter
 } from '@ionic/react';
 import {
-  informationCircleOutline,
-  sendOutline,
-  attachOutline,
-  callOutline,
-  videocamOutline,
   ellipsisVertical,
   arrowBack
 } from 'ionicons/icons';
@@ -59,7 +52,7 @@ const ChatDetailPage: React.FC = () => {
   const handleSubmit = async () => {
 
     try {
-      let chat: any = await apiService.request("/Tickets/open/" + ticketChat.id + "/" + user.id,);
+      const chat: any = await apiService.request("/Tickets/open/" + ticketChat.id + "/" + user.id,);
       setSelectedTicketChat(chat);
       //fetchChatHistory(chat.id, 1)
       popoverRef.current?.dismiss();
@@ -112,7 +105,7 @@ const ChatDetailPage: React.FC = () => {
     return () => {
       deletteChat();
     }
-  }, [])
+  }, [ticketChat.id, fetchChatHistory, deletteChat]);
   if (!ticketChat.id) {
     return (
       <IonPage>
@@ -179,6 +172,7 @@ const ChatDetailPage: React.FC = () => {
           onScroll={handleScrolltop}
           loading={isLoading}
           scrollRef={scrollRef}
+          type={ticketChat.ChatPerfil.conexionID ?? 1}
         />
       </IonContent>
 

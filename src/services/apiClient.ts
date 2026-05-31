@@ -1,16 +1,19 @@
+import { RefreshTokenInterceptor } from "@/interceptor/refresh-token.interceptor";
 import axios from "axios";
 
 // Leer la URL base de las variables de entorno
-const API_BASE_URL = import.meta.env.VITE_API_URL 
+
 
 const apiClient = axios.create({
-    baseURL: API_BASE_URL,
     headers: {
         "Content-Type": "application/json",
-    }
+
+    },
+    withCredentials: true,
 });
 
 // Interceptor para añadir el token de autenticación a cada solicitud
+
 apiClient.interceptors.request.use(
     (config) => {
         const token = localStorage.getItem('token');
@@ -19,9 +22,6 @@ apiClient.interceptors.request.use(
         }
         return config;
     },
-    (error) => {
-        return Promise.reject(error);
-    }
 );
-
+RefreshTokenInterceptor(apiClient, apiClient);
 export default apiClient;

@@ -1,16 +1,23 @@
-import { io } from "socket.io-client";
+import openSocket, { Socket } from "socket.io-client"
+const SOCKET_URL = import.meta.env.VITE_API_URL;
 
-const SOCKET_URL = import.meta.env.VITE_API_URL; // Exactamente igual que dashboard-chat
+let socket: Socket | null = null;
 
-export function connectToSocket() {
-    const token: string = localStorage.getItem("token") || "";
-    
-    return io(SOCKET_URL, {
-        transports: ["websocket", "polling", "flashsocket"],
-        query: {
-            token: token || ""
-        }
-    });
+function connectToSocket(): Socket {
+    const token: string = localStorage.getItem("token") || ""
+    socket = openSocket(SOCKET_URL, {
+        transports: ["polling", "websocket"],
+        query: { token }
+    })
+    return socket;
 }
 
-export default connectToSocket;
+// Reconectar con token actualizado tras refresh
+globalThis.addEventListener('auth:token-refreshed', () => {
+    if (socket?.connected) {
+        socket.disconnect();
+        connectToSocket();
+    }
+});
+
+export default connectToSocket

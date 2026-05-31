@@ -32,8 +32,6 @@ interface ChatBottombarProps {
   user?: any | null;
 }
 
-// eslint-disable-next-line react-refresh/only-export-components
-export const BottombarIcons = [{ icon: FileImage }];
 //isMobile = false,
 export default function ChatBottombar({ selectedUser, user }: Readonly<ChatBottombarProps>) {
   const [message, setMessage] = useState("");
@@ -41,15 +39,12 @@ export default function ChatBottombar({ selectedUser, user }: Readonly<ChatBotto
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [recordingTime, setRecordingTime] = useState(0);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const mediaRecorderRef = useRef<any | null>(null);
-  const mediaStreamRef = useRef<any | null>(null);
+  const intervalRef = useRef<any | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isDisabled = !selectedUser || selectedUser.userId !== user?.id;
 
   const [isLoading, setIsLoading] = useState(false);
-  //const [showPopover, setShowPopover] = useState(false)
   const [pastedFile, setPastedFile] = useState<File | null>(null);
   const [pastedFilePreviewUrl, setPastedFilePreviewUrl] = useState<string | null>(null);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
@@ -168,9 +163,7 @@ export default function ChatBottombar({ selectedUser, user }: Readonly<ChatBotto
 
       console.error("Error sending message", error);
       return
-    } finally {
-
-    }
+    } 
   };
 
   const handleInputChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {

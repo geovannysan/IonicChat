@@ -1,7 +1,6 @@
 import axios, { AxiosRequestConfig } from "axios";
-
-// API Base Configuration - Exactamente igual que dashboard-chat
-const API_BASE_URL = import.meta.env.VITE_API_URL;
+import apiClient from "./apiClient";
+const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 
 class ApiService {
   private readonly baseURL: string;
@@ -28,71 +27,36 @@ class ApiService {
     endpoint: string,
     options: AxiosRequestConfig = {}
   ): Promise<T> {
-    const url = `${this.baseURL}${endpoint}`;
-    const isFormData = options.data instanceof FormData;
-    const config: AxiosRequestConfig = {
+     const url = `${this.baseURL}${endpoint}`;
+    // const isFormData = options.data instanceof FormData;
+  const config: AxiosRequestConfig = {
       ...options,
-      url,
-      headers: {
-        // Si es FormData, no ponemos Content-Type para que el navegador lo asigne
-        ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
-        'Cache-Control': 'no-cache',
-        ...options.headers,
-        ...(this.token && { Authorization: `Bearer ${this.token}` }),
-      },
+       url,
+    //   headers: {
+    //     // Si es FormData, no ponemos Content-Type para que el navegador lo asigne
+    //     ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
+    //     'Cache-Control': 'no-cache',
+    //     ...options.headers,
+    //     ...(this.token && { Authorization: `Bearer ${this.token}` }),
+    //   },
 
-    };
+   };
 
     try {
-      const response = await axios.request<T>(config);
+      const response = await apiClient.request<T>(config);
       return response.data;
-    } catch (error: any) {
-      localStorage.setItem("lastError", JSON.stringify(error));
-      
-      if (error.response?.status === 403) {
-        try {
-          const refreshResponse = await axios.post(`${this.baseURL}/auth/refresh`, {}, {
-            headers: {
-              'Content-Type': 'application/json',
-              ...(this.token && { Authorization: `Bearer ${this.token}` }),
-            },
-          });
-
-          if (refreshResponse.status === 200) {
-            const data = refreshResponse.data;
-            localStorage.setItem("token", JSON.stringify(data.token));
-            this.token = data.token;
-
-            // Reintentar la petición original
-            const retryConfig = {
-              ...config,
-              headers: {
-                ...config.headers,
-                Authorization: `Bearer ${data.token}`,
-              },
-            };
-            const retryResponse = await axios.request<T>(retryConfig);
-            return retryResponse.data;
-          }
-        } catch (refreshError) {
-          console.error('Error refreshing token:', refreshError);
-        }
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        throw new Error(error.response?.data?.message || 'Error en la solicitud');
       }
-
-      if (error.response?.status === 401) {
-        localStorage.removeItem("token");
-         localStorage.removeItem("user");
-         localStorage.clear()
-        this.token = null;
-       
-        throw new Error('Session expired');
-      }
-      throw new Error('Session expired');
+      throw error;
     }
   }
 
+
+
   // Auth - Endpoints exactos de dashboard-chat
-  async login(email: string, password: string) {
+  async login(email: string, password: string): Promise<{ token: string, user: unknown }> {
     return this.request('/Users/Login', {
       method: 'POST',
       data: JSON.stringify({ email, password }),
@@ -134,7 +98,7 @@ class ApiService {
     return this.request(`/users/${page}`);
   }
 
-  async updateUser(id: number, data: any) {
+  async updateUser(id: number, data: unknown) {
     return this.request(`/Users/${id}`, {
       method: 'PUT',
       data: JSON.stringify(data),
@@ -167,7 +131,7 @@ class ApiService {
   }
 
   // Soporte Tickets - Endpoints exactos de dashboard-chat
-  async getSoporteTickets(params?: any) {
+  async getSoporteTickets(params?: Record<string, string>) {
     const query = params ? `?${new URLSearchParams(params)}` : '';
     return this.request(`/soporte/tickets${query}`);
   }
@@ -176,7 +140,7 @@ class ApiService {
     return this.request(`/soporte/tickets/${id}`);
   }
 
-  async updateSoporteTicket(id: string, updates: any) {
+  async updateSoporteTicket(id: string, updates: unknown) {
     return this.request(`/soporte/tickets/${id}`, {
       method: 'PUT',
       data: JSON.stringify(updates),

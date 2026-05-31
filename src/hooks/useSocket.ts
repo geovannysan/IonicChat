@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useRef } from 'react';
-import { connectToSocket } from '../services/socket';
+import  connectToSocket  from '../services/socket';
 import { useAuthContext } from '../contexts/AuthContext';
 import { useDataStore } from '../stores/useTicketsChat';
 

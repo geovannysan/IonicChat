@@ -37,7 +37,7 @@ export const useAuth = () => {
     const [messagesState, setMessagesState] = useState<any[]>([]);
     const [isAuth, setIsAuth] = useState(false);
     const [loading, setLoading] = useState(true);
-    let primer = JSON.parse(localStorage.getItem("user") || "null");
+    const primer = JSON.parse(localStorage.getItem("user") || "null");
     const [user, setUser] = useState<any | null>(primer === "null" ? null : primer);
     const [empresaIdAnterior, setEmpresaIdAnterior] = useState<string | null>(null);
     const [empresaIdActual, setEmpresaIdActual] = useState<string | null>(null);
@@ -83,6 +83,7 @@ export const useAuth = () => {
 
     const { addChatTickte, addChatnotify, deleteChat, deleteNotify, fetchUsers } = useDataStore();
     const currentRoomRef = useRef<any | null>(null);
+    const [socket, setSocket] = useState<any>(null);
 
     // Verificar token al inicializar
     useEffect(() => {
@@ -91,9 +92,7 @@ export const useAuth = () => {
         if (users && token) {
             (async () => {
                 try {
-
                     apiService.setToken(token);
-
                     setIsAuth(true);
                     setLoading(false);
                     // globalThis.location.href = "/tabs/chat"
@@ -125,7 +124,9 @@ export const useAuth = () => {
         if (!user?.id) return;
 
         if (!currentRoomRef.current) {
-            currentRoomRef.current = connectToSocket();
+            const s = connectToSocket();
+            currentRoomRef.current = s;
+            setSocket(s);
             console.log("conectados")
         }
 
@@ -218,10 +219,10 @@ export const useAuth = () => {
         }
     }, [empresaIdAnterior, empresaIdActual, user?.perfil]);
 
-    const handleLogin = async (userData: any) => {
+    const handleLogin = async (userData: { email: string, password: string }) => {
         setLoading(true);
         try {
-            const datas: any = await apiService.login(userData.email, userData.password);
+            const datas: { token: string, user:any } = await apiService.login(userData.email, userData.password);
             const data = datas
 
             localStorage.setItem("token", data.token);
@@ -235,8 +236,6 @@ export const useAuth = () => {
                 try {
                     await fetchUsers(1);
                     setEmpresaIdAnterior(data.user.perfil);
-
-                    history.push("/tabs/chat");
                 } catch (error) {
                     console.error("Error cargando datos:", error);
                 }
@@ -274,7 +273,7 @@ export const useAuth = () => {
 
     const handleCuenta = async (id: number, cuentaId: string) => {
         try {
-            let newuser = await apiService.updateUser(id, { chatperfliid: cuentaId });
+            const newuser: any = await apiService.updateUser(id, { chatperfliid: cuentaId });
             setEmpresaIdAnterior(cuentaId);
             localStorage.setItem("user", JSON.stringify(newuser))
             setUser(newuser)
@@ -296,7 +295,7 @@ export const useAuth = () => {
         loading,
         handleLogin,
         handleLogout,
-        socket: currentRoomRef.current,
+        socket,
         handleCuenta,
         setEmpresaIdActual,
         empresaIdActual,

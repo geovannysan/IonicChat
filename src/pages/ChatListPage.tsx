@@ -16,14 +16,13 @@ import {
   IonTabBar,
   IonTabButton,
   IonLabel,
-  getPlatforms
 } from '@ionic/react';
 import {
   chatbubbleOutline,
   refreshOutline
 } from 'ionicons/icons';
 import { useHistory } from 'react-router-dom';
-import { useDataStore } from '../stores/useTicketsChat';
+import { ChatItem, useDataStore } from '../stores/useTicketsChat';
 import { useAuthContext } from '../contexts/AuthContext';
 import { cn, formatWhatsAppDate } from '../lib/utils';
 import SoftBadgeDemo from '@/components/ui/chat/Sidebar';
@@ -35,14 +34,15 @@ import { variable } from "../../everimont/everimonet"
 
 import Onesignal from "onesignal-cordova-plugin"
 import apiService from '@/services/api';
+import { isnotMovileDevice } from '@/utils/validar.util';
+import { Etiqueta } from '@/types';
 const ChatListPage: React.FC = () => {
   const history = useHistory();
-  const { user, socket, setUser } = useAuthContext();
+  const { user } = useAuthContext();
   const {
     chats,
     fetchUsers,
     isLoading,
-    fetchChatHistory,
     setSelectedTicketChat,
 
   } = useDataStore();
@@ -51,8 +51,9 @@ const ChatListPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'asignadas' | 'mias' | 'pendientes' | 'todas'>('todas');
   useEffect(() => {
     fetchUsers(1);
+    console.log("Chats cargados:", chats);
   }, [fetchUsers]);
-  const handleChatSelect = (chat: any) => {
+  const handleChatSelect = (chat: ChatItem) => {
 
     history.push(`/chat/${chat.id}`);
     setSelectedTicketChat(chat);
@@ -103,11 +104,12 @@ const ChatListPage: React.FC = () => {
     return filteredChats.sort((a, b) =>
       new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
     );
-  }, [chats, searchTerm, activeTab]);
+  }, [chats, searchTerm, activeTab, user.id]);
   useLayoutEffect(() => {
-    if (!getPlatforms().includes("android")) return;
+    if (isnotMovileDevice()) return;
 
     const setupNotifications = async () => {
+      if(isnotMovileDevice()) return;
       try {
         Onesignal.initialize(variable.onesignaid);
 
@@ -115,7 +117,7 @@ const ChatListPage: React.FC = () => {
 
         if (hasPermission) {
           Onesignal.User.pushSubscription.optIn();
-          const account = user.cuenta.find((el: any) => el.accountId == user.perfil);
+          const account = user.cuenta.find((el:{ accountId: string; }) => el.accountId == user.perfil);
 
           Onesignal.login(account.accountId + "_" + account.id)
           const currentId = await Onesignal.User.getOnesignalId();
@@ -132,14 +134,14 @@ const ChatListPage: React.FC = () => {
           });
 
           Onesignal.Notifications.addEventListener('click', (e) => {
-            const data = e.notification.additionalData as any;
+            const data = e.notification.additionalData as { url?: string };
             if (data?.url) {
               history.push(data.url);
             }
           });
         }
       } catch (error) {
-
+        console.error("Error configurando notificaciones:", error);
       }
     };
 
@@ -147,6 +149,8 @@ const ChatListPage: React.FC = () => {
   }, []);
 
   const updateUserInDB = async (pushId: string) => {
+    console.log("Updating user with pushId:", pushId);
+    if (!user) return;
     const account = user.selectedAccount;
 
     if (account) {
@@ -248,7 +252,7 @@ const ChatListPage: React.FC = () => {
                     {chat.userId != null && (
                       <div className="flex items-center gap-3 flex-wrap">
                         <div className="relative">
-                          <Badge className="rounded-full" variant="outline">
+                          <Badge className="rounded-full" >
                             <span className="text-xs text-white font-medium">
                               {chat?.userId == user?.id ? "MI" : "AG"}
                             </span>
@@ -266,13 +270,13 @@ const ChatListPage: React.FC = () => {
 
                   <div className="flex flex-col w-full gap-1" title={chat.messages}>
                     <div className="flex justify-between items-center">
-                      <Badge className="rounded-full pl-[3px]" variant="secondary">
+                      <Badge className="rounded-full align-center pl-[3px]" variant="secondary">
                         {!chat?.ChatPerfil?.conexionID && (
                           <MessageCircleCode height={20} width={20} />
                         )}
-                        <span className="text-xs text-muted-foreground font-medium">
+                        <div className="align-middle text-center font-medium">
                           {chat?.ChatPerfil?.name || "PaperLayer Channel"}
-                        </span>
+                        </div>
                       </Badge>
 
                       <div className="flex items-center gap-1 text-xs text-zinc-400">
@@ -302,7 +306,7 @@ const ChatListPage: React.FC = () => {
 
                 <div className="flex gap-1 mt-2 flex-wrap w-full pl-18">
                   <SoftBadgeDemo status={"" + chat.status} />
-                  {chat.Teams && (
+                  {chat.Teams?.name && (
                     <Badge className="rounded-full">
                       <div className="h-1.5 w-1.5 rounded-full mr-2" style={{
                         backgroundColor: chat.Teams?.color
@@ -312,7 +316,7 @@ const ChatListPage: React.FC = () => {
                   )}
                   {chat.etiquetas && (
                     <div className="flex items-center">
-                      {chat.etiquetas.slice(0, 3).map((tag: any, idx: number) => (
+                      {chat.etiquetas.slice(0, 3).map((tag: Etiqueta, idx: number) => (
                         <Badge
                           key={"bg" + idx}
                           className={cn(

@@ -1,9 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useEffect, useState } from 'react';
+import React, {useState } from 'react';
 import {
   IonButton,
   IonContent,
-  IonDatetime,
   IonIcon,
   IonItem, // IonInput removed as it's not needed for userId filter
   IonLabel,
@@ -15,22 +14,20 @@ import {
   IonToggle // Import IonToggle
 } from '@ionic/react';
 import {
-  settings,
   list,
   map,
-  ellipsisVerticalOutline
+  ellipsisVerticalOutline,
+  filterCircleOutline
 } from 'ionicons/icons';
 import { useHistory } from 'react-router-dom';
-import { useTicketStore } from '../stores/useTicketStore';
 import { format } from "date-fns"; // Import format from date-fns
 import { DateRange } from "react-day-picker"; // Import DateRange type
-
-import type { SoporteTicket } from '../types';
 import { DraggableMarkerExample } from '@/components/Mapconstroller';
 import { formatWhatsAppDate } from '@/lib/utils';
 import apiService from '@/services/api';
 import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { useLocation } from '@/hooks/useLocation';
+import { SoporteTicket } from '@/types';
 
 // Define the interface for the agenda tickets
 interface Contact {
@@ -80,15 +77,14 @@ interface AgendaTicket {
 
 const SoporteTicketsPage: React.FC = () => {
   const history = useHistory();
-  const {
-    tickets,
-    fetchTickets,
-  } = useTicketStore();
+  // const {
+  //   tickets,
+  // } = useTicketStore();
 
   const { latitude, longitude } = useLocation();
 
   const [activeTab, setActiveTab] = useState<'map' | 'list' | 'settings'>('list');
-  const [agendaTickets, setAgendaTickets] = useState<SoporteTicket[]>(tickets);
+  const [agendaTickets, setAgendaTickets] = useState<SoporteTicket[]>([]);
   const [isAgendaLoading, setIsAgendaLoading] = useState(false);
 
   const [filterMine, setFilterMine] = useState<boolean>(false); // New state for "Mine" filter
@@ -98,13 +94,8 @@ const SoporteTicketsPage: React.FC = () => {
     // Assuming user data is stored in localStorage as 'user' object
     const userData = localStorage.getItem('user');
     if (userData) {
-      try {
-        const user = JSON.parse(userData);
-        return user.id ? String(user.id) : null;
-      } catch (e) {
-
-        return null;
-      }
+      const user = JSON.parse(userData);
+      return user.id ? String(user.id) : null;
     }
     return null;
   };
@@ -129,19 +120,16 @@ const SoporteTicketsPage: React.FC = () => {
       if (dateRange?.to) {
         body.fechaFin = format(dateRange.to, 'yyyy-MM-dd');
       }
-
-      // Validation: If no userId is provided (filterByMine is false), dates must be present
-      if (!filterByMine && (!dateRange?.from || !dateRange?.to)) {
-        throw new Error("If filtering by 'All' users, both Fecha Inicio and Fecha Fin must be provided.");
-      }
-
+      
       const response: any = await apiService.request('/soport/filterAgenda', {
         method: 'POST',
         data: body
       });
+      console.log('Agenda tickets:', response.ticket, 'with filters:', body);
       setAgendaTickets(response.ticket);
       setActiveTab('list')
-    } catch (err: any) {
+    } catch (error) {
+      console.error('Error fetching agenda tickets:', error);
 
     } finally {
       setIsAgendaLoading(false);
@@ -149,16 +137,10 @@ const SoporteTicketsPage: React.FC = () => {
   };
 
 
-  useEffect(() => {
-    fetchTickets();
-  }, [fetchTickets]);
+  // useEffect(() => {
+  //   fetchTickets();
+  // }, [fetchTickets]);
 
-  useEffect(() => {
-    // Initial fetch of all tickets when the list tab is first loaded
-    if (activeTab === 'list') {
-      fetchAgendaTickets(false, undefined); // Fetch all tickets initially
-    }
-  }, [activeTab]); // Trigger initial fetch when activeTab changes to 'list'
 
 
 
@@ -180,19 +162,19 @@ const SoporteTicketsPage: React.FC = () => {
             locations={agendaTickets.length > 0
               ? agendaTickets
                 .filter(t => {
-                  const lat = parseFloat(t.latitude ?? "");
-                  const lng = parseFloat(t.longitude ?? "");
+                  const lat = Number.parseFloat(t.latitude ?? "");
+                  const lng = Number.parseFloat(t.longitude ?? "");
                   return (
-                    !isNaN(lat) && lat >= -90 && lat <= 90 &&
-                    !isNaN(lng) && lng >= -180 && lng <= 180 &&
+                    !Number.isNaN(lat) && lat >= -90 && lat <= 90 &&
+                    !Number.isNaN(lng) && lng >= -180 && lng <= 180 &&
                     (lat !== 0 || lng !== 0) // Opcional: filtrar si vienen en 0,0
                   );
                 })
                 .map(t => ({
                   id: String(t.id),
                   name: t.subject || 'Sin asunto',
-                  lng: parseFloat(t.latitude ?? ""),
-                  lat: parseFloat(t.longitude ?? ""),
+                  lng: Number.parseFloat(t.latitude ?? ""),
+                  lat:Number.parseFloat(t.longitude ?? ""),
                   description: `${t.requesterName} - ${t.address || 'Sin dirección'}`
                 }))
               : []
@@ -203,7 +185,7 @@ const SoporteTicketsPage: React.FC = () => {
         {activeTab === 'list' && (
           <>
             {isAgendaLoading && <p>Cargando agenda de tickets...</p>}
-            {[...tickets, ...agendaTickets].map((ticket, index) => (
+            {[...agendaTickets.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())].map((ticket) => (
               <IonItem
                 key={ticket.id}
                 button
@@ -260,10 +242,10 @@ const SoporteTicketsPage: React.FC = () => {
               ></IonToggle>
             </IonItem>
             <IonItem>
-              <DateRangePicker  date={dateRange} setDate={setDateRange} 
-              
+              <DateRangePicker date={dateRange} setDate={setDateRange}
+
               />
-           
+
             </IonItem>
             <IonItem>
               <IonButton expand="block" onClick={() => fetchAgendaTickets(filterMine, dateRange)}>
@@ -299,8 +281,8 @@ const SoporteTicketsPage: React.FC = () => {
           onClick={() => setActiveTab('settings')}
           selected={activeTab === 'settings'}
         >
-          <IonIcon icon={settings} />
-          <IonLabel>Ajustes</IonLabel>
+          <IonIcon icon={filterCircleOutline} />
+          <IonLabel>Filtrar</IonLabel>
         </IonTabButton>
       </IonTabBar>
     </IonPage>

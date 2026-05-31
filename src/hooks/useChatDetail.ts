@@ -22,7 +22,7 @@ export const useChatDetail = () => {
     addMessage
   } = useDataStore();
 
-  const handleMessage = (data: any) => {
+  const handleMessage = (data:{message: {ticketid: number}}) => {
     if (!data?.message) return;
     const msg = data.message;
 
@@ -46,7 +46,7 @@ export const useChatDetail = () => {
     }
   };
 
-  const handleScrolltop = (e: any) => {
+  const handleScrolltop = (e: React.UIEvent<HTMLDivElement>) => {
     const { scrollTop, scrollHeight } = e.currentTarget;
 
     if (!hasMorechat || isLoading) return;
@@ -85,17 +85,25 @@ export const useChatDetail = () => {
   }, [ticketChat.id, ticketChat.contactId, fetchChatHistory]);
 
   useEffect(() => {
-    if (!socket || !socket.connected) return;
+    if (!socket) return;
 
-    socket.on("appMessage", handleMessage);
-    
-    if (Number(id) !== 0 && id != null) {
-      socket.emit("joinChatBox", String(id));
-      console.log("Conectado al chat:", id);
+    const join = () => {
+      socket.on("appMessage", handleMessage);
+      if (Number(id) !== 0 && id != null) {
+        socket.emit("joinChatBox", String(id));
+        console.log("Conectado al chat:", id);
+      }
+    };
+
+    if (socket.connected) {
+      join();
+    } else {
+      socket.once("connect", join);
     }
 
     return () => {
       socket.off("appMessage", handleMessage);
+      socket.off("connect", join);
       if (id) {
         socket.emit("leaveChatBox", String(id));
       }

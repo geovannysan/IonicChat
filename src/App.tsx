@@ -24,8 +24,8 @@ import ChatListPage from './pages/ChatListPage';
 import ChatDetailPage from './pages/ChatDetailPage';
 import ContactListPage from './pages/ContactListPage';
 import ContactDetailPage from './pages/ContactDetailPage';
-import SoporteTicketsPage from './pages/SoporteTicketsPage';
-import SoporteTicketDetailPage from './pages/SoporteTicketDetailPage';
+import SoporteTicketsPage from './pages/Soport/SoporteTicketsPage';
+import SoporteTicketDetailPage from './pages/Soport/SoporteTicketDetailPage';
 import UserProfilePage from './pages/UserProfilePage';
 import LoginPage from './pages/LoginPage';
 
@@ -56,21 +56,16 @@ import './theme/chat.css';
 import { useLocation } from './hooks/useLocation';
 import ChatHistorialPage from './pages/ChatHistoryPage';
 import { StatusBar, Style } from '@capacitor/status-bar';
-import {  useLayoutEffect } from 'react';
+import { useLayoutEffect } from 'react';
 
 const setStatusBarStyle = async () => {
-  if (isPlatform('android')) {
-    // Cambiar el color de fondo (Solo Android)
-    await StatusBar.setBackgroundColor({ color: '#3880ff' }); // Usa tu color hexadecimal
-
-    // Cambiar el estilo de los iconos (Hora, Batería, etc.)
-    // Style.Default: Iconos oscuros (para fondos claros)
-    // Style.Dark: Iconos claros (para fondos oscuros)
-    await StatusBar.setStyle({ style: Style.Dark });
+  if (isPlatform('android') &&  !isPlatform('mobileweb')) {
+    console.log("Setting status bar for Android");
+    // Fondo negro y iconos blancos
+    await StatusBar.setBackgroundColor({ color: '#000000' });
+    await StatusBar.setStyle({ style: Style.Light });
   }
 };
-
-// Dentro de tu componente App
 
 setupIonicReact();
 

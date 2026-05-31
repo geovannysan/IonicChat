@@ -21,12 +21,14 @@ import {
   IonTabBar,
   IonTabButton
 } from '@ionic/react';
-import { locationOutline, timeOutline, personOutline, saveOutline, prismOutline } from 'ionicons/icons';
+import { locationOutline, timeOutline, personOutline, saveOutline, prismOutline, pencil } from 'ionicons/icons';
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { SoporteTicket } from '../types';
+import { SoporteTicket } from '../../types';
 import { useAuth } from '@/hooks/useAuth';
 import apiService from '@/services/api';
+import { TicketThread } from './componets/TicketThread';
+import { STATUS_OPTIONS } from './constants/soport.constant';
 interface TicketParams {
   id: string;
 }
@@ -38,18 +40,18 @@ const SoporteTicketDetailPage: React.FC = () => {
   const [comment, setComment] = useState('');
   const [status, setStatus] = useState<string>('');
   const [loading, setLoading] = useState(false);
- const [activeTab, setActiveTab] = useState<'detalle' | 'comentario' | 'historial'>('detalle');
+  const [activeTab, setActiveTab] = useState<'detalle' | 'comentario' | 'historial'>('detalle');
   useEffect(() => {
     loadTicket();
-  }, [id]);
+  }, []);
 
   const loadTicket = async () => {
     try {
-      const data: any = await apiService.request(`/cuenta/getTicket/${id}`);
+      const data: SoporteTicket = await apiService.request(`/cuenta/getTicket/${id}`);
       const { asignasio, ...rest } = data;
 
-      setTicket(rest);
-      setStatus(rest.status);
+      setTicket({ asignasio, ...rest });
+      setStatus(rest.status as string);;
     } catch (error) {
       console.error('Error loading ticket:', error);
     }
@@ -104,7 +106,7 @@ const SoporteTicketDetailPage: React.FC = () => {
 
       <IonContent >
         <IonTabBar >
-          <IonTabButton   tab="detalle" onClick={() => setActiveTab('detalle')} selected={activeTab === 'detalle'}>
+          <IonTabButton tab="detalle" onClick={() => setActiveTab('detalle')} selected={activeTab === 'detalle'}>
             <IonIcon icon={locationOutline} slot="start" />
             <IonLabel>Detalles</IonLabel>
           </IonTabButton>
@@ -147,6 +149,11 @@ const SoporteTicketDetailPage: React.FC = () => {
                   <h3>Estado</h3>
                   {ticket.status}
                 </IonLabel>
+                <IonLabel slot="end">
+                  <IonButton size="small" onClick={() => setActiveTab('comentario')}>
+                    <IonIcon icon={pencil} size="small" />
+                  </IonButton>
+                </IonLabel>
               </IonItem>
               <IonItem>
                 <IonIcon icon={prismOutline} slot="start" />
@@ -175,7 +182,7 @@ const SoporteTicketDetailPage: React.FC = () => {
               <IonItem>
 
                 <IonLabel >
-                  <h3>Creado</h3>
+                  <h3>Asignado</h3>
                   {ticket.assignedUser?.name || 'Sin asignar'}
                 </IonLabel>
 
@@ -184,8 +191,12 @@ const SoporteTicketDetailPage: React.FC = () => {
 
           </IonCardContent>
         </IonCard>}
+        {activeTab == 'comentario' && 
+          <TicketThread key={id} ticket={ticket} />
+        }
+        
 
-        {canEdit && (
+        {!canEdit && (
           <IonCard>
             <IonCardHeader>
               <IonCardTitle>Actualizar Ticket</IonCardTitle>
@@ -194,9 +205,11 @@ const SoporteTicketDetailPage: React.FC = () => {
               <IonItem>
                 <IonLabel>Estado</IonLabel>
                 <IonSelect value={status} >
-                  <IonSelectOption value="pending">Pendiente</IonSelectOption>
-                  <IonSelectOption value="in_progress">En Progreso</IonSelectOption>
-                  <IonSelectOption value="resolved">Resuelto</IonSelectOption>
+                  {STATUS_OPTIONS.map((option) => (
+                    <IonSelectOption key={option.id} value={option.id}>
+                      {option.name}
+                    </IonSelectOption>
+                  ))}
                 </IonSelect>
               </IonItem>
 

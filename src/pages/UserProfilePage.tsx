@@ -42,7 +42,7 @@ const UserProfilePage: React.FC = () => {
         method: "PUT",
         data: { isPush: pushId }
       });
-      let newuser = await apiService.updateUser(user.id, { chatperfliid: account.accountId });
+      const newuser = await apiService.updateUser(user.id, { chatperfliid: account.accountId });
       localStorage.setItem("user", JSON.stringify(newuser))
       setUser(newuser)
     }
@@ -97,16 +97,11 @@ const UserProfilePage: React.FC = () => {
           </IonCardHeader>
           <IonCardContent>
             <IonList>
-
-
-
-
               {error && (
                 <IonItem>
                   <IonNote color="danger">{error}</IonNote>
                 </IonItem>
               )}
-
               <IonItem>
                 <IonIcon icon={notificationsOutline} slot="start" />
                 <IonLabel>
@@ -134,9 +129,9 @@ const UserProfilePage: React.FC = () => {
         {user?.cuenta && (<IonActionSheet
           isOpen={showActionSheet}
           onDidDismiss={() => setShowActionSheet(false)}
-          header={"Empresa Actual: " + user?.cuenta.find((elm: any) => elm.accountId == user.perfil).account?.nombre || 'Opciones'}
+          header={"Empresa Actual: " + user?.cuenta.find((elm: { accountId: string; }) => elm.accountId == user.perfil).account?.nombre || 'Opciones'}
           buttons={[
-            ...user?.cuenta.filter((elm: any) => elm.accountId !== user.perfil).map((item: any) =>
+            ...user.cuenta.filter((elm: { accountId: string; }) => elm.accountId !== user.perfil).map((item: { userId: number; accountId: string; account: { nombre: string; } }) =>
             ({
               text: `Empresa: ${item.account?.nombre}`,
               handler: () => {

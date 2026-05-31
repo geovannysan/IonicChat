@@ -1,7 +1,6 @@
 import { memo, useMemo } from "react";
 import { Forward } from "lucide-react";
 import { motion } from "framer-motion";
-import { IonContent, IonList } from "@ionic/react";
 import { ChatBubble, ChatBubbleAction, ChatBubbleActionWrapper, ChatBubbleMessage, ChatBubbleTimestamp } from "./chat-bubble";
 import { formatWhatsAppDate } from "../../../lib/utils";
 import { MediaPreview } from "../Mediapreview";
@@ -14,13 +13,14 @@ const getMessageVariant = (fromMe: boolean) =>
 
 interface ChatListComponentProps {
   messages: Message[];
-  onScroll: (e: any) => void;
-  scrollRef: React.RefObject<HTMLDivElement>;
+  onScroll: (e: React.UIEvent<HTMLDivElement>) => void;
+  scrollRef: React.RefObject<HTMLDivElement> | null;
   loading: boolean;
   history?: boolean;
+  type: string | number;
 }
 
-function ChatListComponent({ messages, onScroll, scrollRef, loading, history = false }: ChatListComponentProps) {
+function ChatListComponent({ messages, onScroll, scrollRef, loading, history = false ,type}: Readonly <ChatListComponentProps>) {
   const actionIcons = [
     { icon: Forward, type: "Forward" },
   ];
@@ -28,7 +28,7 @@ function ChatListComponent({ messages, onScroll, scrollRef, loading, history = f
   const renderedMessages = useMemo(() => {
     if (!messages || messages.length === 0) return [];
 
-    return messages.map((message: any, index: number) => {
+    return messages.map((message: Message, index: number) => {
       const variant = getMessageVariant(message.fromMe);
       const avatarSrc = message.contact?.profilePicUrl || undefined;
       const avatarFallback = message.contact?.name ? message.contact.name.charAt(0).toUpperCase() : undefined;
@@ -98,11 +98,11 @@ function ChatListComponent({ messages, onScroll, scrollRef, loading, history = f
 
             {!history && (
               <ChatBubbleActionWrapper>
-                {actionIcons.map(({ icon: Icon, type }) => (
+                {Number(type) < 3 && actionIcons.map(({ icon: Icon, type }) => (
                   <ChatBubbleAction
                     className="size-5"
                     key={type}
-                    icon={<Icon className="size-4" />}
+                    icon={<Icon className="size-2" />}
                     onClick={() => console.log({ ...message })}
                   />
                 ))}
@@ -116,7 +116,7 @@ function ChatListComponent({ messages, onScroll, scrollRef, loading, history = f
 
   return (
     <TooltipProvider>
-      <ChatMessageList scrollRef={scrollRef} onScroll={onScroll} loading={loading}>
+      <ChatMessageList scrollRef={scrollRef} onScroll={onScroll} loading={loading} type={type}>
         {renderedMessages}
       </ChatMessageList>
     </TooltipProvider>
