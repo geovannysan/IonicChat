@@ -5,7 +5,13 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:android": "vite --mode android",
+    "dev:device": "vite --mode device",
     "build": "tsc && vite build",
+    "build:android": "tsc && vite build --mode android",
+    "build:device": "tsc && vite build --mode device",
+    "cap:android": "npm run build:android && npx cap sync android && npx cap open android",
+    "cap:device": "npm run build:device && npx cap sync android && npx cap open android",
     "preview": "vite preview",
     "test.e2e": "cypress run",
     "test.unit": "vitest",

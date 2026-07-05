@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useHistory } from 'react-router-dom';
 import { useDataStore } from '../stores/useTicketsChat';
 import { useAuthContext } from '@/contexts/AuthContext';
@@ -7,7 +7,7 @@ export const useChatDetail = () => {
   const { id } = useParams<{ id: string }>();
   const { socket } = useAuthContext();
   const history = useHistory();
-  const scrollRef = useRef<any>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const prevScrollHeight = useRef<number>(0);
   const [pageNumber, setPageNumber] = useState(1);
   const [message, setMessage] = useState('');
@@ -22,7 +22,7 @@ export const useChatDetail = () => {
     addMessage
   } = useDataStore();
 
-  const handleMessage = (data:{message: {ticketid: number}}) => {
+  const handleMessage = useCallback( (data:{message: {ticketid: number}}) => {
     if (!data?.message) return;
     const msg = data.message;
 
@@ -44,7 +44,7 @@ export const useChatDetail = () => {
         }
       });
     }
-  };
+  }, [id, addMessage]);
 
   const handleScrolltop = (e: React.UIEvent<HTMLDivElement>) => {
     const { scrollTop, scrollHeight } = e.currentTarget;
@@ -90,6 +90,7 @@ export const useChatDetail = () => {
     const join = () => {
       socket.on("appMessage", handleMessage);
       if (Number(id) !== 0 && id != null) {
+        alert("Conectado al chat: " + id);
         socket.emit("joinChatBox", String(id));
         console.log("Conectado al chat:", id);
       }
@@ -102,13 +103,14 @@ export const useChatDetail = () => {
     }
 
     return () => {
+
       socket.off("appMessage", handleMessage);
       socket.off("connect", join);
       if (id) {
         socket.emit("leaveChatBox", String(id));
       }
     };
-  }, [socket, id]);
+  }, [socket, id, handleMessage]);
 
   return {
     ticketChat,

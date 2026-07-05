@@ -28,6 +28,8 @@ import { SoporteTicket } from '../../types';
 import { useAuth } from '@/hooks/useAuth';
 import apiService from '@/services/api';
 import { TicketThread } from './componets/TicketThread';
+import { CommentDialog } from './componets/CommentDialog';
+import { CommentForm } from './componets/CommentForm';
 import { STATUS_OPTIONS } from './constants/soport.constant';
 interface TicketParams {
   id: string;
@@ -41,17 +43,18 @@ const SoporteTicketDetailPage: React.FC = () => {
   const [status, setStatus] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'detalle' | 'comentario' | 'historial'>('detalle');
+  const [commentOpen, setCommentOpen] = useState(false);
   useEffect(() => {
     loadTicket();
   }, []);
 
   const loadTicket = async () => {
+    setCommentOpen(false);
     try {
       const data: SoporteTicket = await apiService.request(`/cuenta/getTicket/${id}`);
       const { asignasio, ...rest } = data;
-
       setTicket({ asignasio, ...rest });
-      setStatus(rest.status as string);;
+      setStatus(rest.status as string);
     } catch (error) {
       console.error('Error loading ticket:', error);
     }
@@ -62,13 +65,14 @@ const SoporteTicketDetailPage: React.FC = () => {
 
     setLoading(true);
     try {
-      await fetch(`/api/tickets/${id}`, {
+      
+      await apiService.request(`/api/v1/agenda/${id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+        data: {
           status,
-          comment: comment.trim() || undefined
-        })
+          comment: comment.trim(),
+          token: user.accounts.slug
+        },
       });
 
       if (comment.trim()) {
@@ -192,7 +196,14 @@ const SoporteTicketDetailPage: React.FC = () => {
           </IonCardContent>
         </IonCard>}
         {activeTab == 'comentario' && 
-          <TicketThread key={id} ticket={ticket} />
+          <div className="flex flex-col gap-2">
+            <div className="flex justify-end px-4 pt-4">
+              <CommentDialog isOpen={commentOpen} onOpenChange={setCommentOpen}>
+                <CommentForm ticketId={String(id)} onClose={loadTicket} slug={user.accounts.slug} />
+              </CommentDialog>
+            </div>
+            <TicketThread key={id} ticket={ticket} />
+          </div>
         }
         
 

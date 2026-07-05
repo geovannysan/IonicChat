@@ -27,27 +27,20 @@ class ApiService {
     endpoint: string,
     options: AxiosRequestConfig = {}
   ): Promise<T> {
-     const url = `${this.baseURL}${endpoint}`;
-    // const isFormData = options.data instanceof FormData;
-  const config: AxiosRequestConfig = {
+    const config: AxiosRequestConfig = {
       ...options,
-       url,
-    //   headers: {
-    //     // Si es FormData, no ponemos Content-Type para que el navegador lo asigne
-    //     ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
-    //     'Cache-Control': 'no-cache',
-    //     ...options.headers,
-    //     ...(this.token && { Authorization: `Bearer ${this.token}` }),
-    //   },
-
-   };
+      url: endpoint,
+      withCredentials: true,
+    };
 
     try {
       const response = await apiClient.request<T>(config);
       return response.data;
     } catch (error) {
       if (axios.isAxiosError(error)) {
-        throw new Error(error.response?.data?.message || 'Error en la solicitud');
+        const status = error.response?.status;
+        const message = error.response?.data?.message || error.response?.data?.mensaje || error.message;
+        throw new Error(`[${status}] ${message}`);
       }
       throw error;
     }
@@ -142,6 +135,12 @@ class ApiService {
 
   async updateSoporteTicket(id: string, updates: unknown) {
     return this.request(`/soporte/tickets/${id}`, {
+      method: 'PUT',
+      data: JSON.stringify(updates),
+    });
+  }
+  async UpdatePerfil(id: string, updates: unknown) {
+    return this.request(`/Users/${id}`, {
       method: 'PUT',
       data: JSON.stringify(updates),
     });

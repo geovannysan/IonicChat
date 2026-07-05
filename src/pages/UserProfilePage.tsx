@@ -35,18 +35,21 @@ const UserProfilePage: React.FC = () => {
   // Función auxiliar para evitar código duplicado
   const updatePushInDB = async (pushId: boolean) => {
 
+    try {
     const account = user.selectedAccount;
 
-    if (account) {
-      await apiService.request("/Users/acount/" + account.id, {
-        method: "PUT",
-        data: { isPush: pushId }
-      });
+     if (account) {
+      //account.id, {
+    //     method: "PUT",
+    //     data: JSON.stringify({ isPush: pushId }) 
+        await apiService.UpdatePerfil(account.id, { isPush: pushId })
       const newuser = await apiService.updateUser(user.id, { chatperfliid: account.accountId });
       localStorage.setItem("user", JSON.stringify(newuser))
       setUser(newuser)
     }
-
+    } catch (error) {
+      console.error("Error updating push setting:", error);
+    }
   };
 
   return (

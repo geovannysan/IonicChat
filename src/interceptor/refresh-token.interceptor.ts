@@ -32,7 +32,10 @@ export function RefreshTokenInterceptor(client: AxiosInstance, refreshClient: Ax
       isRefreshing = true;
 
       try {
-        const { data } = await refreshClient.post('/auth/refresh');
+        const { data } = await refreshClient.post('/auth/refresh', undefined, {
+          withCredentials: true,
+          headers: { 'Content-Type': 'text/plain' },
+        });
         if (data?.token) {
           localStorage.setItem('token', data.token);
           originalRequest.headers['Authorization'] = `Bearer ${data.token}`;
