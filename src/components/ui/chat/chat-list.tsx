@@ -14,16 +14,16 @@ const getMessageVariant = (fromMe: boolean) =>
 interface ChatListComponentProps {
   messages: Message[];
   onScroll: (e: React.UIEvent<HTMLDivElement>) => void;
-  scrollRef: React.RefObject<HTMLDivElement> | null;
+  scrollRef?: React.RefObject<HTMLDivElement> | null;
   loading: boolean;
   history?: boolean;
   type: string | number;
 }
-
-function ChatListComponent({ messages, onScroll, scrollRef, loading, history = false ,type}: Readonly <ChatListComponentProps>) {
-  const actionIcons = [
+ const actionIcons = [
     { icon: Forward, type: "Forward" },
   ];
+function ChatListComponent({ messages, onScroll, scrollRef, loading, history = false ,type}: Readonly <ChatListComponentProps>) {
+ 
 
   const renderedMessages = useMemo(() => {
     if (!messages || messages.length === 0) return [];
@@ -112,7 +112,7 @@ function ChatListComponent({ messages, onScroll, scrollRef, loading, history = f
         </motion.div>
       );
     });
-  }, [messages, loading, history]);
+  }, [messages, history, type]);
 
   return (
     <TooltipProvider>

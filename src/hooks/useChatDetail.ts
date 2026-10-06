@@ -7,7 +7,7 @@ export const useChatDetail = () => {
   const { id } = useParams<{ id: string }>();
   const { socket } = useAuthContext();
   const history = useHistory();
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<React.RefObject<HTMLDivElement>>(null);
   const prevScrollHeight = useRef<number>(0);
   const [pageNumber, setPageNumber] = useState(1);
   const [message, setMessage] = useState('');
@@ -30,7 +30,7 @@ export const useChatDetail = () => {
 
     const isAtBottom = scrollRef.current
       ? (() => {
-          const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
+          const { scrollTop, scrollHeight, clientHeight } = scrollRef.current.current;
           return scrollHeight - scrollTop - clientHeight < 15;
         })()
       : false;
@@ -39,8 +39,8 @@ export const useChatDetail = () => {
 
     if (isAtBottom) {
       requestAnimationFrame(() => {
-        if (scrollRef.current) {
-          scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+        if (scrollRef.current?.current) {
+          scrollRef.current.current.scrollTop = scrollRef.current.current.scrollHeight;
         }
       });
     }
@@ -90,7 +90,6 @@ export const useChatDetail = () => {
     const join = () => {
       socket.on("appMessage", handleMessage);
       if (Number(id) !== 0 && id != null) {
-        alert("Conectado al chat: " + id);
         socket.emit("joinChatBox", String(id));
         console.log("Conectado al chat:", id);
       }

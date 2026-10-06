@@ -14,8 +14,8 @@ const config: CapacitorConfig = {
   },
   "server": {
     "cleartext": true,
-     "allowNavigation": ["10.0.2.2", "localhost", "192.168.0.105"]
-
+    "androidScheme": "http",
+    "allowNavigation": ["10.0.2.2", "localhost", "192.168.0.105"]
   }
 };
 

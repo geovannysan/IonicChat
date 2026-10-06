@@ -171,7 +171,7 @@ const ChatDetailPage: React.FC = () => {
           messages={chatHistory}
           onScroll={handleScrolltop}
           loading={isLoading}
-          scrollRef={scrollRef}
+          scrollRef={scrollRef.current}
           type={ticketChat.ChatPerfil.conexionID ?? 1}
         />
       </IonContent>
