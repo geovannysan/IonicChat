@@ -22,7 +22,7 @@ import {
   IonTabButton
 } from '@ionic/react';
 import { locationOutline, timeOutline, personOutline, saveOutline, prismOutline, pencil } from 'ionicons/icons';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { SoporteTicket } from '../../types';
 import { useAuth } from '@/hooks/useAuth';
@@ -44,11 +44,8 @@ const SoporteTicketDetailPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'detalle' | 'comentario' | 'historial'>('detalle');
   const [commentOpen, setCommentOpen] = useState(false);
-  useEffect(() => {
-    loadTicket();
-  }, []);
 
-  const loadTicket = async () => {
+  const loadTicket = useCallback(async () => {
     setCommentOpen(false);
     try {
       const data: SoporteTicket = await apiService.request(`/cuenta/getTicket/${id}`);
@@ -58,7 +55,13 @@ const SoporteTicketDetailPage: React.FC = () => {
     } catch (error) {
       console.error('Error loading ticket:', error);
     }
-  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
+
+  // exhaustive-deps: loadTicket incluido (estable gracias a useCallback + dep [id])
+  useEffect(() => {
+    loadTicket();
+  }, [loadTicket]);
 
   const updateTicket = async () => {
     if (!ticket || !user) return;

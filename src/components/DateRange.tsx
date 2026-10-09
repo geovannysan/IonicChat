@@ -1,49 +1,57 @@
-import React, { useState } from 'react';
+import { useRef } from 'react';
 import { IonDatetime } from '@ionic/react';
-import { format, addDays, isBefore, isAfter, eachDayOfInterval, parseISO } from 'date-fns';
+import { format, eachDayOfInterval, parseISO } from 'date-fns';
 
-export function RangeExample({ selectedDates, setSelectedDates }: { selectedDates: string[], setSelectedDates: (dates: string[]) => void }) {
+interface RangeExampleProps {
+  selectedDates: string[];
+  setSelectedDates: (dates: string[]) => void;
+}
 
-  // Guardamos solo los clics reales del usuario (inicio y fin)
-  const [endpoints, setEndpoints] = useState<string[]>([]);
+/**
+ * Selector de rango de fechas.
+ * `endpoints` se guarda en useRef porque es un valor auxiliar de cálculo
+ * que no necesita disparar re-renders (rerender-state-only-in-handlers).
+ */
+export function RangeExample({ selectedDates, setSelectedDates }: RangeExampleProps) {
+  // useRef: endpoints es un cursor de estado interno, no necesita re-render
+  const endpointsRef = useRef<string[]>([]);
 
   const handleDateChange = (ev: CustomEvent) => {
     const value = ev.detail.value;
-    // Extraemos la última fecha sobre la que el usuario hizo clic
     const lastClicked = Array.isArray(value) ? value[value.length - 1] : value;
 
     if (!lastClicked) {
-      setEndpoints([]);
+      endpointsRef.current = [];
       setSelectedDates([]);
       return;
     }
 
-    // CASO 1: Si ya había 2 fechas (rango completo) o clic en la misma fecha B
-    // Reiniciamos y esa fecha pasa a ser el nuevo "Punto A"
+    const endpoints = endpointsRef.current;
+
+    // Rango completo o clic repetido en el mismo extremo → resetear
     if (endpoints.length === 2 || (endpoints.length === 1 && endpoints[0] === lastClicked)) {
-      setEndpoints([lastClicked]);
+      endpointsRef.current = [lastClicked];
       setSelectedDates([lastClicked]);
-    } 
-    // CASO 2: Tenemos un Punto A y elegimos un Punto B
+    }
+    // Segundo extremo del rango
     else if (endpoints.length === 1) {
       const start = parseISO(endpoints[0]);
       const end = parseISO(lastClicked);
 
-      // Ordenamos cronológicamente
       const intervalStart = start < end ? start : end;
       const intervalEnd = start < end ? end : start;
 
       const fullRange = eachDayOfInterval({
         start: intervalStart,
-        end: intervalEnd
+        end: intervalEnd,
       }).map(d => format(d, 'yyyy-MM-dd'));
 
-      setEndpoints([endpoints[0], lastClicked]); // Guardamos los dos puntos
-      setSelectedDates(fullRange); // Pintamos todo el rango
-    } 
-    // CASO 3: Primer clic de la historia
+      endpointsRef.current = [endpoints[0], lastClicked];
+      setSelectedDates(fullRange);
+    }
+    // Primer clic
     else {
-      setEndpoints([lastClicked]);
+      endpointsRef.current = [lastClicked];
       setSelectedDates([lastClicked]);
     }
   };
@@ -56,4 +64,4 @@ export function RangeExample({ selectedDates, setSelectedDates }: { selectedDate
       onIonChange={handleDateChange}
     />
   );
-};
+}

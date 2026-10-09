@@ -118,6 +118,11 @@ function MapContent({
       const response = await fetch(
         `https://router.project-osrm.org/route/v1/driving/${userLocation.lng},${userLocation.lat};${location.lng},${location.lat}?overview=full&geometries=geojson&alternatives=true`
       );
+      // no-fetch-response-used-without-status-check: fetch no rechaza en 4xx/5xx,
+      // por lo que es necesario verificar response.ok antes de procesar el cuerpo.
+      if (!response.ok) {
+        throw new Error(`Error al obtener la ruta: ${response.status} ${response.statusText}`);
+      }
       const data = await response.json();
       
       if (data.code === 'Ok' && data.routes?.[0]) {

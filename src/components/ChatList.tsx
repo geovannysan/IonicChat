@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   IonContent,
   IonList,
@@ -21,10 +20,11 @@ export const ChatList: React.FC<{
   onChatClick: (chat: ChatItem) => void;
 }> = ({ onChatClick }) => {
   const { chats, selectedChat, fetchChats, hasMoreChats, isLoadingChats } = useChatStore();
-  const [page, setPage] = useState(1);
+
+  // rerender-state-only-in-handlers: page no dispara re-renders, es solo un cursor de paginación
+  const pageRef = useRef(1);
   const [searchText, setSearchText] = useState('');
 
-  // Fetch initial chats if the list is empty
   useIonViewWillEnter(() => {
     if (chats.length === 0) {
       fetchChats(1);
@@ -32,22 +32,21 @@ export const ChatList: React.FC<{
   });
 
   const doRefresh = async (event: any) => {
-    // Reset state and fetch from page 1
     useChatStore.setState({ chats: [], hasMoreChats: true });
     await fetchChats(1);
-    setPage(1);
+    pageRef.current = 1;
     event.detail.complete();
   };
 
   const loadMoreChats = async (event: any) => {
     if (hasMoreChats) {
-      const nextPage = page + 1;
+      const nextPage = pageRef.current + 1;
+      pageRef.current = nextPage;
       await fetchChats(nextPage);
-      setPage(nextPage);
     }
     event.target.complete();
   };
-  
+
   const filteredChats = chats.filter(chat =>
     chat.Contact?.name.toLowerCase().includes(searchText.toLowerCase())
   );
@@ -75,11 +74,16 @@ export const ChatList: React.FC<{
             color={selectedChat?.id === chat.id ? 'light' : ''}
           >
             <IonAvatar slot="start">
-              <img src={chat.Contact?.profilePicURl || `https://ui-avatars.com/api/?name=${chat.Contact?.name || '?'}`} alt={chat.Contact?.name} />
+              <img
+                src={chat.Contact?.profilePicURl || `https://ui-avatars.com/api/?name=${chat.Contact?.name || '?'}`}
+                alt={chat.Contact?.name}
+              />
             </IonAvatar>
             <IonLabel>
               <h2>{chat.Contact?.name || 'Desconocido'}</h2>
-              <p className='text-ellipsis overflow-hidden whitespace-nowrap'>{chat.lastMessage || 'No hay mensajes'}</p>
+              <p className="text-ellipsis overflow-hidden whitespace-nowrap">
+                {chat.lastMessage || 'No hay mensajes'}
+              </p>
             </IonLabel>
             {chat.unreadMessages > 0 && (
               <IonBadge color="primary" slot="end">
@@ -88,7 +92,6 @@ export const ChatList: React.FC<{
             )}
           </IonItem>
         ))}
-        
       </IonList>
 
       <IonInfiniteScroll onIonInfinite={loadMoreChats} disabled={!hasMoreChats || isLoadingChats}>
@@ -99,8 +102,10 @@ export const ChatList: React.FC<{
       </IonInfiniteScroll>
 
       {isLoadingChats && chats.length === 0 && (
-         <div className="flex justify-center p-4"><IonSpinner name="crescent" /></div>
+        <div className="flex justify-center p-4">
+          <IonSpinner name="crescent" />
+        </div>
       )}
     </>
   );
-}
+};

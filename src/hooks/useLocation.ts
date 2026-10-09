@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Geolocation } from '@capacitor/geolocation';
 
 interface LocationState {
@@ -22,26 +22,28 @@ export const useLocation = (options: UseLocationOptions = {}) => {
     longitude: null,
     accuracy: null,
     error: null,
-    loading: false
+    loading: false,
   });
 
   const {
     enableHighAccuracy = true,
     timeout = 10000,
     maximumAge = 0,
-    watch = true
+    watch = true,
   } = options;
 
-  const checkAndRequestPermissions = async () => {
+  const checkAndRequestPermissions = useCallback(async () => {
     const status = await Geolocation.checkPermissions();
     if (status.location !== 'granted') {
       const request = await Geolocation.requestPermissions();
       return request.location === 'granted';
     }
     return true;
-  };
+  }, []);
 
-  const getCurrentPosition = async () => {
+  // isMounted flag: evita setear estado en componente desmontado (race condition)
+  const getCurrentPosition = useCallback(async () => {
+    let isMounted = true;
     setLocation(prev => ({ ...prev, loading: true, error: null }));
 
     try {
@@ -53,44 +55,56 @@ export const useLocation = (options: UseLocationOptions = {}) => {
       const position = await Geolocation.getCurrentPosition({
         enableHighAccuracy,
         timeout,
-        maximumAge
+        maximumAge,
       });
 
-      setLocation({
-        latitude: position.coords.latitude,
-        longitude: position.coords.longitude,
-        accuracy: position.coords.accuracy,
-        error: null,
-        loading: false
-      });
+      if (isMounted) {
+        setLocation({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          accuracy: position.coords.accuracy,
+          error: null,
+          loading: false,
+        });
+      }
 
       return position;
     } catch (error) {
-      setLocation(prev => ({
-        ...prev,
-        error: error instanceof Error ? error.message : 'Error obteniendo ubicación',
-        loading: false
-      }));
+      if (isMounted) {
+        setLocation(prev => ({
+          ...prev,
+          error: error instanceof Error ? error.message : 'Error obteniendo ubicación',
+          loading: false,
+        }));
+      }
       throw error;
+    } finally {
+      // Evitar que futuros seteos lleguen si el componente se desmontó
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      isMounted = false;
     }
-  };
+  }, [checkAndRequestPermissions, enableHighAccuracy, timeout, maximumAge]);
 
   useEffect(() => {
     if (!watch) return;
 
     let watchId: string;
+    let active = true;
 
     const startWatching = async () => {
       try {
         const hasPermission = await checkAndRequestPermissions();
         if (!hasPermission) {
-          setLocation(prev => ({ ...prev, error: 'Permisos de ubicación denegados' }));
+          if (active) {
+            setLocation(prev => ({ ...prev, error: 'Permisos de ubicación denegados' }));
+          }
           return;
         }
 
         watchId = await Geolocation.watchPosition(
           { enableHighAccuracy, timeout, maximumAge },
           (position, err) => {
+            if (!active) return;
             if (err) {
               setLocation(prev => ({ ...prev, error: err.message }));
               return;
@@ -101,32 +115,35 @@ export const useLocation = (options: UseLocationOptions = {}) => {
                 longitude: position.coords.longitude,
                 accuracy: position.coords.accuracy,
                 error: null,
-                loading: false
+                loading: false,
               });
             }
           }
         );
       } catch (error) {
-        setLocation(prev => ({
-          ...prev,
-          error: error instanceof Error ? error.message : 'Error monitoreando ubicación',
-          loading: false
-        }));
+        if (active) {
+          setLocation(prev => ({
+            ...prev,
+            error: error instanceof Error ? error.message : 'Error monitoreando ubicación',
+            loading: false,
+          }));
+        }
       }
     };
 
     startWatching();
 
     return () => {
+      active = false;
       if (watchId) {
         Geolocation.clearWatch({ id: watchId });
       }
     };
-  }, [watch, enableHighAccuracy, timeout, maximumAge]);
+  }, [watch, enableHighAccuracy, timeout, maximumAge, checkAndRequestPermissions]);
 
   return {
     ...location,
     getCurrentPosition,
-    refresh: getCurrentPosition
+    refresh: getCurrentPosition,
   };
 };

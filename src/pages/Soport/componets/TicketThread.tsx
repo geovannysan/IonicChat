@@ -26,7 +26,12 @@ export const TicketThread = ({ ticket }: { ticket: SoporteTicket }) => {
             <IonInfiniteScroll className="flex-1 p-2">
                 <div className="space-y-4">
                     {ticket.mensajes?.length > 0 ? (
-                        ticket.mensajes.sort((a: SoporteComentario, b: SoporteComentario) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).map((comment: SoporteComentario, index: number) => {
+                        // sort inmutable: spread crea una copia antes de ordenar
+                        [...ticket.mensajes]
+                          .sort((a: SoporteComentario, b: SoporteComentario) =>
+                            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+                          )
+                          .map((comment: SoporteComentario, index: number) => {
                             const isAgent = comment.authorType === "user";
 
                             return (

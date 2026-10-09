@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useEffect, useState, useMemo, useRef, useLayoutEffect } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import {
   IonContent,
   IonHeader,
@@ -15,28 +15,17 @@ import {
   IonSpinner,
   IonText,
   IonIcon,
-  IonButton,
-  IonButtons,
   IonFab,
   IonFabButton,
-  IonActionSheet,
   IonNote
 } from '@ionic/react';
 import {
   peopleOutline,
-  personOutline,
-  chatbubbleOutline,
-  addOutline,
-  callOutline,
-  ellipsisVerticalOutline,
-  arrowUpOutline
 } from 'ionicons/icons';
 import { useContactStore } from '../stores/useContactStore';
 import { formatWhatsAppDate } from '../lib/utils';
 import apiService from '../services/api';
 import { useHistory } from 'react-router';
-import { useAutoScroll } from '@/hooks/useAutoScroll';
-import { Button } from '@/components/ui/Button';
 import { ArrowDown } from 'lucide-react';
 import { useAuthContext } from '@/contexts/AuthContext';
 
@@ -47,10 +36,11 @@ const ContactListPage: React.FC = () => {
     hasMore,
     isLoading,
   } = useContactStore();
-  let history = useHistory()
+  const history = useHistory()
   useAuthContext()
   const [searchTerm, setSearchTerm] = useState("");
-  const [pageNumber, setPageNumber] = useState(1);
+  // rerender-state-only-in-handlers: pageNumber no dispara re-renders
+  const pageNumberRef = useRef(1);
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isAtBottom, setIsAtBottom] = useState(true);
   const scrollRef = useRef<any>(null);
@@ -88,9 +78,9 @@ const ContactListPage: React.FC = () => {
       return;
     }
 
-    const nextPage = pageNumber + 1;
+    const nextPage = pageNumberRef.current + 1;
+    pageNumberRef.current = nextPage;
     await fetchContacts(nextPage);
-    setPageNumber(nextPage);
 
     (event.target as HTMLIonInfiniteScrollElement).complete();
   };
@@ -166,9 +156,9 @@ const ContactListPage: React.FC = () => {
           </div>
         ) : (
           <IonList ref={actualRef}>
-            {sortedContacts.map((contact, index) => (
+            {sortedContacts.map((contact) => (
               <IonItem
-                key={"contactos" + index}
+                key={contact.id ?? contact.number}
                 button
                 onClick={() => handleContactSelect(contact)}
                 className="contact-item"

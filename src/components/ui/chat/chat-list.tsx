@@ -1,10 +1,12 @@
 import { memo, useMemo } from "react";
 import { Forward } from "lucide-react";
-import { motion } from "framer-motion";
+// use-lazy-motion: LazyMotion + domAnimation + m.div en vez de motion.div
+// reduce el bundle cargando solo las animaciones necesarias
+import { LazyMotion, domAnimation, m } from "framer-motion";
 import { ChatBubble, ChatBubbleAction, ChatBubbleActionWrapper, ChatBubbleMessage, ChatBubbleTimestamp } from "./chat-bubble";
 import { formatWhatsAppDate } from "../../../lib/utils";
 import { MediaPreview } from "../Mediapreview";
-import { Message } from '../../../../src/types'; // Import Message type
+import { Message } from '../../../../src/types';
 import { ChatMessageList } from "./chat-message-list";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../tooltip";
 
@@ -19,23 +21,26 @@ interface ChatListComponentProps {
   history?: boolean;
   type: string | number;
 }
- const actionIcons = [
-    { icon: Forward, type: "Forward" },
-  ];
-function ChatListComponent({ messages, onScroll, scrollRef, loading, history = false ,type}: Readonly <ChatListComponentProps>) {
- 
 
+const actionIcons = [
+  { icon: Forward, type: "Forward" },
+];
+
+function ChatListComponent({ messages, onScroll, scrollRef, loading, history = false, type }: Readonly<ChatListComponentProps>) {
   const renderedMessages = useMemo(() => {
     if (!messages || messages.length === 0) return [];
 
     return messages.map((message: Message, index: number) => {
       const variant = getMessageVariant(message.fromMe);
       const avatarSrc = message.contact?.profilePicUrl || undefined;
-      const avatarFallback = message.contact?.name ? message.contact.name.charAt(0).toUpperCase() : undefined;
+      const avatarFallback = message.contact?.name
+        ? message.contact.name.charAt(0).toUpperCase()
+        : undefined;
 
       return (
-        <motion.div
-          key={index}
+        // key estable: message.id (string requerido en la interfaz Message, nunca índice)
+        <m.div
+          key={message.id}
           layout
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -53,7 +58,7 @@ function ChatListComponent({ messages, onScroll, scrollRef, loading, history = f
           <ChatBubble variant={variant} avatarSrc={avatarSrc} avatarFallback={avatarFallback}>
             <ChatBubbleMessage isLoading={message.isLoading}>
               {message.quotedMsg && (
-                <div className="border-l-4 border-green-500  min-h-1.5 pl-2 mb-1 text-sm text-muted-foreground bg-muted/30 rounded-sm">
+                <div className="border-l-4 border-green-500 min-h-1.5 pl-2 mb-1 text-sm text-muted-foreground bg-muted/30 rounded-sm">
                   {message?.quotedMsg?.mediaUrl ? (
                     <MediaPreview
                       type={message.quotedMsg.mediaType}
@@ -91,7 +96,6 @@ function ChatListComponent({ messages, onScroll, scrollRef, loading, history = f
                   <ChatBubbleTimestamp
                     timestamp={formatWhatsAppDate(message.createdAt)}
                   />
-
                 </div>
               )}
             </ChatBubbleMessage>
@@ -109,22 +113,24 @@ function ChatListComponent({ messages, onScroll, scrollRef, loading, history = f
               </ChatBubbleActionWrapper>
             )}
           </ChatBubble>
-        </motion.div>
+        </m.div>
       );
     });
   }, [messages, history, type]);
 
   return (
-    <TooltipProvider>
-      <ChatMessageList scrollRef={scrollRef} onScroll={onScroll} loading={loading} type={type}>
-        {renderedMessages}
-      </ChatMessageList>
-    </TooltipProvider>
+    // LazyMotion: carga las animaciones de forma diferida para reducir el bundle inicial
+    <LazyMotion features={domAnimation}>
+      <TooltipProvider>
+        <ChatMessageList scrollRef={scrollRef} onScroll={onScroll} loading={loading} type={type}>
+          {renderedMessages}
+        </ChatMessageList>
+      </TooltipProvider>
+    </LazyMotion>
   );
 }
 
 export const ChatLists = memo(
   ChatListComponent,
   (prevProps, nextProps) => prevProps.messages === nextProps.messages,
-  
 );

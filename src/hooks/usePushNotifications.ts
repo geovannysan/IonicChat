@@ -4,17 +4,76 @@ import apiService from '../services/api';
 import { useAuth } from './useAuth';
 
 export const usePushNotifications = () => {
-  const { user, isAuth:isAuthenticated } = useAuth();
+  const { user, isAuth: isAuthenticated } = useAuth();
 
   useEffect(() => {
     if (!isAuthenticated || !user) return;
 
-    const initPushNotifications = async () => {
+    // Mutable refs para los handles de Capacitor. Se asignan en setup() y se
+    // liberan síncronamente en cleanup, evitando el antipatrón .then(l => l.remove())
+    // que no garantiza la remoción antes del próximo render (react-doctor/effect-needs-cleanup).
+    let registrationHandle: Awaited<ReturnType<typeof PushNotifications.addListener>> | null = null;
+    let registrationErrorHandle: Awaited<ReturnType<typeof PushNotifications.addListener>> | null = null;
+    let receivedHandle: Awaited<ReturnType<typeof PushNotifications.addListener>> | null = null;
+    let actionHandle: Awaited<ReturnType<typeof PushNotifications.addListener>> | null = null;
+    let cancelled = false;
+
+    const setup = async () => {
       try {
-        // Solicitar permisos
+        // Registrar listeners primero; si el componente se desmontó antes de que
+        // esta Promise resuelva, cleanup() ya habrá puesto cancelled = true y
+        // los handles recién asignados se removerán de inmediato.
+        registrationHandle = await PushNotifications.addListener(
+          'registration',
+          async (token) => {
+            console.log('Push registration success, token: ' + token.value);
+            try {
+              await apiService.request(token.value, user.id);
+            } catch (error) {
+              console.error('Error registering push token:', error);
+            }
+          }
+        );
+
+        registrationErrorHandle = await PushNotifications.addListener(
+          'registrationError',
+          (error) => {
+            console.error('Error on registration: ' + JSON.stringify(error));
+          }
+        );
+
+        receivedHandle = await PushNotifications.addListener(
+          'pushNotificationReceived',
+          (notification) => {
+            console.log('Push received: ' + JSON.stringify(notification));
+          }
+        );
+
+        actionHandle = await PushNotifications.addListener(
+          'pushNotificationActionPerformed',
+          (notification) => {
+            console.log('Push action performed: ' + JSON.stringify(notification));
+            const data = notification.notification.data;
+            if (data.type === 'chat') {
+              globalThis.location.href = `/tabs/chat/${data.chatId}`;
+            } else if (data.type === 'ticket') {
+              globalThis.location.href = `/tabs/agenda/${data.ticketId}`;
+            }
+          }
+        );
+
+        // Si el componente se desmontó mientras awaiteábamos, remover de inmediato.
+        if (cancelled) {
+          registrationHandle.remove();
+          registrationErrorHandle.remove();
+          receivedHandle.remove();
+          actionHandle.remove();
+          return;
+        }
+
+        // Solicitar permisos y registrar el dispositivo.
         const permission = await PushNotifications.requestPermissions();
-        
-        if (permission.receive === 'granted') {
+        if (!cancelled && permission.receive === 'granted') {
           await PushNotifications.register();
         }
       } catch (error) {
@@ -22,50 +81,17 @@ export const usePushNotifications = () => {
       }
     };
 
-    // Listener para token de registro
-    const registrationListener = PushNotifications.addListener('registration', async (token) => {
-      console.log('Push registration success, token: ' + token.value);
-      
-      try {
-        await apiService.request(token.value, user.id);
-      } catch (error) {
-        console.error('Error registering push token:', error);
-      }
-    });
+    setup();
 
-    // Listener para errores de registro
-    const registrationErrorListener = PushNotifications.addListener('registrationError', (error) => {
-      console.error('Error on registration: ' + JSON.stringify(error));
-    });
-
-    // Listener para notificaciones recibidas (app en foreground)
-    const receivedListener = PushNotifications.addListener('pushNotificationReceived', (notification) => {
-      console.log('Push received: ' + JSON.stringify(notification));
-      // Aquí puedes mostrar una notificación local o actualizar la UI
-    });
-
-    // Listener para notificaciones tocadas (app en background)
-    const actionListener = PushNotifications.addListener('pushNotificationActionPerformed', (notification) => {
-      console.log('Push action performed: ' + JSON.stringify(notification));
-      
-      const data = notification.notification.data;
-      
-      // Navegar según el tipo de notificación
-      if (data.type === 'chat') {
-        globalThis.location.href = `/tabs/chat/${data.chatId}`;
-      } else if (data.type === 'ticket') {
-        globalThis.location.href = `/tabs/agenda/${data.ticketId}`;
-      }
-    });
-
-    initPushNotifications();
-
-    // Cleanup
+    // Cleanup síncrono: marca cancelled y remueve cualquier handle ya resuelto.
     return () => {
+      cancelled = true;
+      registrationHandle?.remove();
+      registrationErrorHandle?.remove();
+      receivedHandle?.remove();
+      actionHandle?.remove();
     };
   }, [isAuthenticated, user]);
 
-  return {
-    // Funciones adicionales si las necesitas
-  };
+  return {};
 };

@@ -132,7 +132,7 @@ const UserProfilePage: React.FC = () => {
         {user?.cuenta && (<IonActionSheet
           isOpen={showActionSheet}
           onDidDismiss={() => setShowActionSheet(false)}
-          header={"Empresa Actual: " + user?.cuenta.find((elm: { accountId: string; }) => elm.accountId == user.perfil).account?.nombre || 'Opciones'}
+          header={"Empresa Actual: " + (user?.cuenta?.find((elm: { accountId: string; }) => elm.accountId == user.perfil)?.account?.nombre || 'Opciones')}
           buttons={[
             ...user.cuenta.filter((elm: { accountId: string; }) => elm.accountId !== user.perfil).map((item: { userId: number; accountId: string; account: { nombre: string; } }) =>
             ({

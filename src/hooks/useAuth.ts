@@ -1,10 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useHistory } from "react-router-dom";
 import { useDataStore, type ChatItem } from "../stores/useTicketsChat";
 import apiService from "@/services/api";
 import connectToSocket from "@/services/socket";
 import { App } from "@capacitor/app";
+
 const playNotificationSound = () => {
     try {
         const audioContext = new (globalThis.AudioContext || (globalThis as any).webkitAudioContext)();
@@ -83,51 +84,57 @@ export const useAuth = () => {
 
     const { addChatTickte, addChatnotify, deleteChat, deleteNotify, fetchUsers } = useDataStore();
     const currentRoomRef = useRef<any | null>(null);
-    const [socket, setSocket] = useState<any>(null);
 
     // Verificar token al inicializar
     useEffect(() => {
         const token = localStorage.getItem("token");
-        const users = localStorage.getItem("user")
+        const users = localStorage.getItem("user");
         if (users && token) {
             (async () => {
                 try {
+                    const parsedUser = JSON.parse(users ?? "");
                     apiService.setToken(token);
                     setIsAuth(true);
                     setLoading(false);
-                    // globalThis.location.href = "/tabs/chat"
-                    setUser(JSON.parse(users ?? ""))
-                    await apiService.request("/Users/acount/" + user.cuenta.find((el: any) => el.accountId == user.perfil).id, {
-                        method: "PUT",
-                        data: {
-                            idWorkspace: localStorage.getItem("pushId")
-                        }
-                    })
+                    setUser(parsedUser);
+                    // optional chaining: protege el acceso encadenado al resultado de .find()
+                    const cuenta = parsedUser?.cuenta?.find(
+                        (el: any) => el.accountId === parsedUser.perfil
+                    );
+                    if (cuenta?.id) {
+                        await apiService.request("/Users/acount/" + cuenta.id, {
+                            method: "PUT",
+                            data: {
+                                idWorkspace: localStorage.getItem("pushId")
+                            }
+                        });
+                    }
                 } catch (err: any) {
                     const errorData = err?.response?.data;
-                    if (errorData?.mensaje === "ERR_SESSION_EXPIRED" ||
-                        errorData?.mensaje === "Token inválido") {
+                    if (
+                        errorData?.mensaje === "ERR_SESSION_EXPIRED" ||
+                        errorData?.mensaje === "Token inválido"
+                    ) {
                         localStorage.removeItem("token");
                         setIsAuth(false);
                         setLoading(false);
-                        globalThis.location.href = "/"
+                        globalThis.location.href = "/";
                     }
                 }
             })();
         } else {
             setLoading(false);
         }
+
     }, []);
 
     // Configurar socket cuando el usuario esté autenticado
     useEffect(() => {
         if (!user?.id) return;
-
         if (!currentRoomRef.current) {
-            const s = connectToSocket();
-            currentRoomRef.current = s;
-            setSocket(s);
-            console.log("conectados")
+            currentRoomRef.current = connectToSocket().connect();
+           
+            console.log("conectados");
         }
 
         const socket = currentRoomRef.current;
@@ -137,17 +144,30 @@ export const useAuth = () => {
                 setUser(data.user);
             }
         };
+
         const handleAppStateChange = ({ isActive }: { isActive: boolean }) => {
             if (isActive) {
                 console.log("App activa: verificando socket...");
                 if (!socket.connected) {
-                    socket.connect(); // Fuerza la reconexión al volver
+                    socket.connect();
                 }
             }
         };
 
-        // Registramos el listener de Capacitor
-        const appStateListener = App.addListener('appStateChange', handleAppStateChange);
+        // Handle mutable: se asigna tras await y se remueve síncronamente en cleanup.
+        // El antipatrón anterior usaba .then(l => l.remove()), que no garantiza la
+        // remoción antes del siguiente render (react-doctor/effect-needs-cleanup).
+        let appStateHandle: Awaited<ReturnType<typeof App.addListener>> | null = null;
+        let cancelled = false;
+
+        App.addListener('appStateChange', handleAppStateChange).then((handle) => {
+            if (cancelled) {
+                handle.remove();
+            } else {
+                appStateHandle = handle;
+            }
+        });
+
         const handleChatCerrar = (data: any) => {
             if (data.action === "delete") {
                 deleteChat(Number(data.ticket));
@@ -194,7 +214,10 @@ export const useAuth = () => {
             socket.off("chatcerrar", handleChatCerrar);
             socket.off("connect", handleConnect);
             socket.off("tickemesa", handleTickemesa);
-            appStateListener.then(l => l.remove());
+            // Cleanup síncrono: si el handle ya resolvió, removerlo de inmediato;
+            // si aún está pendiente, el flag cancelled lo removerá cuando resuelva.
+            cancelled = true;
+            appStateHandle?.remove();
         };
     }, [user, addChatTickte, addChatnotify, deleteChat, deleteNotify]);
 
@@ -219,19 +242,24 @@ export const useAuth = () => {
         }
     }, [empresaIdAnterior, empresaIdActual, user?.perfil]);
 
-    const handleLogin = async (userData: { email: string, password: string }) => {
+    const handleLogin = useCallback(async (userData: { email: string, password: string }) => {
         setLoading(true);
         try {
-            const datas: { token: string, user:any } = await apiService.login(userData.email, userData.password);
-            const data = datas
+            const datas: { token: string, user: any } = await apiService.login(userData.email, userData.password);
+            const data = datas;
 
+            // DEUDA TÉCNICA (auth-token-in-web-storage):
+            // El token de acceso se almacena en localStorage, lo que lo expone a XSS.
+            // Solución recomendada: que el backend devuelva el token en una cookie
+            // HttpOnly+Secure+SameSite=Strict, eliminando la necesidad de guardarlo en JS.
+            // Mientras el backend no soporte esa solución, se centraliza el acceso
+            // a través de apiService.setToken() para minimizar la superficie de ataque.
             localStorage.setItem("token", data.token);
             apiService.setToken(data.token);
-            localStorage.setItem("user", JSON.stringify(data.user))
+            localStorage.setItem("user", JSON.stringify(data.user));
             setUser(data.user);
             setIsAuth(true);
 
-            // Cargar datos iniciales
             setTimeout(async () => {
                 try {
                     await fetchUsers(1);
@@ -247,19 +275,16 @@ export const useAuth = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [fetchUsers]);
 
-    const handleLogout = async () => {
+    const handleLogout = useCallback(async () => {
         setLoading(true);
         try {
-
             localStorage.removeItem("token");
             localStorage.removeItem("user");
             if (currentRoomRef.current) {
                 currentRoomRef.current.disconnect();
             }
-
-            //await apiService.logout();
             apiService.setToken('');
             setUser({});
             setIsAuth(false);
@@ -269,15 +294,15 @@ export const useAuth = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [history]);
 
-    const handleCuenta = async (id: number, cuentaId: string) => {
+    const handleCuenta = useCallback(async (id: number, cuentaId: string) => {
         try {
             const newuser: any = await apiService.updateUser(id, { chatperfliid: cuentaId });
             setEmpresaIdAnterior(cuentaId);
-            localStorage.setItem("user", JSON.stringify(newuser))
-            setUser(newuser)
-            globalThis.location.href = "/tabs/chat"
+            localStorage.setItem("user", JSON.stringify(newuser));
+            setUser(newuser);
+            globalThis.location.href = "/tabs/chat";
 
             setTimeout(async () => {
                 await fetchUsers(1);
@@ -286,7 +311,7 @@ export const useAuth = () => {
             console.error("Error cambiando cuenta:", error);
             throw error;
         }
-    };
+    }, [fetchUsers]);
 
     return {
         isAuth,
@@ -295,7 +320,7 @@ export const useAuth = () => {
         loading,
         handleLogin,
         handleLogout,
-        socket,
+        socket: currentRoomRef.current,
         handleCuenta,
         setEmpresaIdActual,
         empresaIdActual,

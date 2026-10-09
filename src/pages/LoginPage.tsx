@@ -20,7 +20,7 @@ import { Button } from '@/components/ui/Button';
 import apiService from '@/services/api';
 
 const LoginPage: React.FC = () => {
-  let history = useHistory()
+  const history = useHistory()
   const [user, setUser] = useState({ email: "", password: "" });
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
@@ -52,14 +52,17 @@ const LoginPage: React.FC = () => {
         }
       })();
     }
-  }, []);
+    // exhaustive-deps: history y setuserLogin son referencias estables
+    // (history viene de useHistory, setuserLogin es el setter del contexto),
+    // se incluyen para satisfacer la regla sin riesgo de re-ejecución inesperada.
+  }, [history, setuserLogin]);
 
   const handleSubmit = async (e: any) => {
     e.preventDefault();
     try {
       await handleLogin(user);
       history.push("/tabs/chat");
-    } catch (error: any) {
+    } catch {
       setToastMessage("HUBO UN ERROR AL INICIAR SESIÓN, VERIFIQUE SUS CREDENCIALES");
       setShowToast(true);
     }

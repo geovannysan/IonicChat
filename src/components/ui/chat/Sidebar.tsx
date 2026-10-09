@@ -38,7 +38,16 @@ export function Sidebar({ chats, onSelectUser }: SidebarProps) {
         {sortedChats.map((chat) => (
           <div
             key={chat.id}
+            role="button"
+            tabIndex={0}
+            aria-label={`Seleccionar chat ${chat.name || 'Sin nombre'}`}
             onClick={() => onSelectUser?.(chat.ChatItem)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onSelectUser?.(chat.ChatItem);
+              }
+            }}
             className={cn(
               "w-full flex flex-col gap-1 p-3 transition-all cursor-pointer hover:bg-muted/30 border-b border-zinc-200 dark:border-zinc-700",
               chat.variant === "secondary" && "bg-cyan-900/10 text-white hover:bg-cyan-900/20"
@@ -119,9 +128,9 @@ export function Sidebar({ chats, onSelectUser }: SidebarProps) {
               )}
               {chat.ChatItem.etiquetas && (
                 <div className="flex items-center">
-                  {chat.ChatItem.etiquetas.slice(0, 3).map((tag: any, idx: number) => (
+                  {chat.ChatItem.etiquetas.slice(0, 3).map((tag: any) => (
                     <Badge
-                      key={idx}
+                      key={tag.id ?? tag.name ?? tag.color}
                       className={cn(
                         "text-white h-5 w-5",
                         tag.color ? "" : "bg-gray-400"

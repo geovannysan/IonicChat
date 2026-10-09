@@ -1,30 +1,33 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
+/**
+ * ChatBottombar — Orquestador de la barra inferior de chat.
+ *
+ * Responsabilidades:
+ *  - Gestionar el estado de mensaje de texto, archivo adjunto y grabación de audio.
+ *  - Coordinar el envío al backend via apiService.
+ *  - Delegar la UI de cada modo a subcomponentes especializados:
+ *      · ChatAttachmentPreview — preview de archivo antes de enviar.
+ *      · ChatAudioRecorder     — controles de grabación/previsualización de audio.
+ *
+ * Refactorizado desde la versión monolítica (no-giant-component).
+ * Object URLs: se liberan en cleanup de useEffect y en cada punto de sustitución
+ * para evitar fugas de memoria (no-create-object-url-without-revoke).
+ */
 declare global {
   interface Window {
     WebAudioRecorder: any;
   }
 }
 import React, { useEffect, useRef, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, LazyMotion, domAnimation, m } from "framer-motion";
 import { base64ToFileAuto, cn } from "../../../lib/utils";
-import { VoiceRecorder } from 'capacitor-voice-recorder';
-import {
-  FileImage,
-  Mic,
-
-  SendHorizontal,
-  StopCircle,
-  FileText,
-  Upload,
-  Trash,
-} from "lucide-react";
+import { VoiceRecorder } from "capacitor-voice-recorder";
+import { Mic, SendHorizontal, Upload } from "lucide-react";
 import { apiService } from "../../../services/api";
-
-import { IonIcon, IonInput } from "@ionic/react";
-import { Button, buttonVariants } from "../Button";
-import { MediaPreview } from "../Mediapreview";
-import { createPortal } from "react-dom";
+import { IonInput } from "@ionic/react";
+import { Button } from "../Button";
+import { ChatAttachmentPreview } from "./ChatAttachmentPreview";
+import { ChatAudioRecorder } from "./ChatAudioRecorder";
 
 interface ChatBottombarProps {
   isMobile: boolean;
@@ -32,14 +35,15 @@ interface ChatBottombarProps {
   user?: any | null;
 }
 
-//isMobile = false,
-export default function ChatBottombar({ selectedUser, user }: Readonly<ChatBottombarProps>) {
+export default function ChatBottombar({
+  selectedUser,
+  user,
+}: Readonly<ChatBottombarProps>) {
   const [message, setMessage] = useState("");
-
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [recordingTime, setRecordingTime] = useState(0);
-  const intervalRef = useRef<any | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isDisabled = !selectedUser || selectedUser.userId !== user?.id;
@@ -50,13 +54,41 @@ export default function ChatBottombar({ selectedUser, user }: Readonly<ChatBotto
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
 
+  // no-create-object-url-without-revoke: cada URL se revoca en el cleanup del
+  // useEffect que lo observa. React ejecuta el cleanup con el valor ANTERIOR
+  // cada vez que el estado cambia, y también en desmontaje — garantizando que
+  // cada Blob/File se libera exactamente una vez.
+  useEffect(() => {
+    if (!audioUrl) return;
+    return () => {
+      URL.revokeObjectURL(audioUrl);
+    };
+  }, [audioUrl]);
+
+  useEffect(() => {
+    if (!pastedFilePreviewUrl) return;
+    return () => {
+      URL.revokeObjectURL(pastedFilePreviewUrl);
+    };
+  }, [pastedFilePreviewUrl]);
+
+  // Auto-resize del textarea al cambiar el mensaje.
+  useEffect(() => {
+    const textarea = inputRef.current;
+    if (textarea) {
+      textarea.style.height = "auto";
+      textarea.style.height = `${textarea.scrollHeight}px`;
+    }
+  }, [message]);
+
+  // ─── Grabación de audio ──────────────────────────────────────────────────────
+
   const startRecording = async () => {
     try {
       await VoiceRecorder.requestAudioRecordingPermission();
       await VoiceRecorder.startRecording();
       setIsRecording(true);
       setRecordingTime(0);
-
       intervalRef.current = setInterval(() => {
         setRecordingTime((prev) => prev + 1);
       }, 1000);
@@ -69,16 +101,15 @@ export default function ChatBottombar({ selectedUser, user }: Readonly<ChatBotto
   const stopRecording = async () => {
     try {
       const result = await VoiceRecorder.stopRecording();
-
       if (intervalRef.current) clearInterval(intervalRef.current);
 
       if (result.value?.recordDataBase64) {
         const blob = base64ToFileAuto(result.value.recordDataBase64);
+        // El useEffect([audioUrl]) revocará el URL anterior en su cleanup.
         const url = URL.createObjectURL(blob);
         setAudioBlob(blob);
         setAudioUrl(url);
       }
-
       setIsRecording(false);
     } catch (err) {
       console.error("Error stopping recording", err);
@@ -86,19 +117,28 @@ export default function ChatBottombar({ selectedUser, user }: Readonly<ChatBotto
     }
   };
 
+  const handleDiscardAudio = () => {
+    // setAudioUrl(null) dispara el cleanup del useEffect([audioUrl]), que revoca la URL.
+    setAudioBlob(null);
+    setAudioUrl(null);
+    setRecordingTime(0);
+  };
+
+  // ─── Reset de estado ─────────────────────────────────────────────────────────
+
   const resetInput = () => {
     setMessage("");
     setAudioBlob(null);
+    // Los useEffect de cleanup revocarán audioUrl y pastedFilePreviewUrl
+    // cuando el estado cambie a null.
     setAudioUrl(null);
     setRecordingTime(0);
     setPastedFile(null);
     setIsLoading(false);
-    if (pastedFilePreviewUrl) {
-      URL.revokeObjectURL(pastedFilePreviewUrl);
-      setPastedFilePreviewUrl(null);
-    }
-
+    setPastedFilePreviewUrl(null);
   };
+
+  // ─── Envío de mensajes ───────────────────────────────────────────────────────
 
   const handleSend = async () => {
     setIsLoading(true);
@@ -106,25 +146,23 @@ export default function ChatBottombar({ selectedUser, user }: Readonly<ChatBotto
       if (pastedFile) {
         const reader = new FileReader();
         reader.readAsDataURL(pastedFile);
-
         reader.onloadend = async () => {
           const base64String = reader.result;
-
           const payload = {
             medias: base64String,
             fileName: pastedFile.name,
             body: message.trim(),
             ticketid: selectedUser.id.toString(),
             fromMe: "1",
-            contactId: selectedUser.contactId.toString()
+            contactId: selectedUser.contactId.toString(),
           };
           await apiService.request("/api/v1/Chat", {
-            method: 'POST',
+            method: "POST",
             data: payload,
-            headers: { "Content-Type": "application/json" }
+            headers: { "Content-Type": "application/json" },
           });
           resetInput();
-        }
+        };
       } else if (audioBlob) {
         const reader = new FileReader();
         reader.readAsDataURL(audioBlob);
@@ -136,296 +174,208 @@ export default function ChatBottombar({ selectedUser, user }: Readonly<ChatBotto
             body: message.trim(),
             ticketid: selectedUser.id.toString(),
             fromMe: "1",
-            contactId: selectedUser.contactId.toString()
+            contactId: selectedUser.contactId.toString(),
           };
           await apiService.request("/api/v1/Chat", {
-            method: 'POST',
+            method: "POST",
             data: payload,
-            headers: { "Content-Type": "application/json" }
+            headers: { "Content-Type": "application/json" },
           });
           resetInput();
-        }
-      } else if (message.trim()) {
-        const info = {
-          ticketid: selectedUser.id.toString(),
-          fromMe: true,
-          body: message.trim(),
-
         };
+      } else if (message.trim()) {
         await apiService.request("/Chat", {
-          method: 'POST',
-          data: info,
+          method: "POST",
+          data: {
+            ticketid: selectedUser.id.toString(),
+            fromMe: true,
+            body: message.trim(),
+          },
         });
-
         resetInput();
       }
     } catch (error) {
-
       console.error("Error sending message", error);
-      return
-    } 
-  };
-
-  const handleInputChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setMessage(event.target.value);
-  };
-
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      setPastedFile(file);
-      if (file.type.startsWith("image/") || file.type.startsWith("video/")) {
-        const url = URL.createObjectURL(file);
-        setPastedFilePreviewUrl(url);
-      } else {
-        setPastedFilePreviewUrl(null);
-      }
     }
   };
 
+  // ─── Manejo de archivos adjuntos ─────────────────────────────────────────────
 
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setPastedFile(file);
+    if (file.type.startsWith("image/") || file.type.startsWith("video/")) {
+      // El useEffect([pastedFilePreviewUrl]) revocará el URL anterior en su cleanup.
+      const url = URL.createObjectURL(file);
+      setPastedFilePreviewUrl(url);
+    } else {
+      setPastedFilePreviewUrl(null);
+    }
+  };
 
   const cancelPreview = () => {
     setPastedFile(null);
-    if (pastedFilePreviewUrl) {
-      URL.revokeObjectURL(pastedFilePreviewUrl);
+    // setAudioUrl(null) dispara el cleanup del useEffect([pastedFilePreviewUrl]).
+    setPastedFilePreviewUrl(null);
+  };
+
+  // ─── Drag & Drop ─────────────────────────────────────────────────────────────
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) =>
+    e.preventDefault();
+  const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDraggingOver(true);
+  };
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDraggingOver(false);
+  };
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDraggingOver(false);
+    const file = e.dataTransfer.files[0];
+    if (!file) return;
+    setPastedFile(file);
+    if (file.type.startsWith("image/")) {
+      // El useEffect([pastedFilePreviewUrl]) revocará el URL anterior en su cleanup.
+      const url = URL.createObjectURL(file);
+      setPastedFilePreviewUrl(url);
+    } else {
       setPastedFilePreviewUrl(null);
     }
   };
 
 
+  // ─── Render ──────────────────────────────────────────────────────────────────
 
-  const formatTime = (seconds: number) => {
-    const m = Math.floor(seconds / 60)
-      .toString()
-      .padStart(2, "0");
-    const s = (seconds % 60).toString().padStart(2, "0");
-    return `${m}:${s}`;
-  };
-
-  const handleKeyPress = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
-
-
-    if (isLoading || isDisabled) {
-      event.preventDefault();
-      return;
-    }
-    if (event.key === "Enter" && !event.shiftKey) {
-      event.preventDefault();
-      handleSend();
-    }
-  };
-
-  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-  };
-
-  const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setIsDraggingOver(true);
-  };
-
-  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setIsDraggingOver(false);
-  };
-
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setIsDraggingOver(false);
-    const file = e.dataTransfer.files[0];
-    if (file) {
-      setPastedFile(file);
-      if (file.type.startsWith("image/")) {
-        const url = URL.createObjectURL(file);
-        setPastedFilePreviewUrl(url);
-      }
-    }
-  };
-
-  useEffect(() => {
-    const textarea = inputRef.current;
-    if (textarea) {
-      textarea.style.height = "auto";
-      textarea.style.height = `${textarea.scrollHeight}px`;
-    }
-  }, [message]);
-
+  // Modo preview de archivo adjunto: portal de pantalla completa.
   if (pastedFile) {
-    const previewContent = (
-      <div className="fixed inset-0 z-50 flex flex-col bg-background/80 backdrop-blur-sm">
-        <div className="flex justify-end p-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={cancelPreview}
-            className="text-white bg-gray-800 hover:bg-gray-700"
-          >
-            <Trash size={20} />
-          </Button>
-        </div>
-
-        <div className="flex-1 flex items-center justify-center p-4 overflow-hidden">
-          {pastedFilePreviewUrl ? (
-            <img
-              src={pastedFilePreviewUrl}
-              alt="Preview"
-              className="max-h-full max-w-full object-contain"
-            />
-          ) : (
-            <div className="flex flex-col items-center justify-center gap-4 p-8 bg-muted rounded-lg">
-              <FileText className="h-24 w-24 text-muted-foreground" />
-              <p className="text-lg font-medium">{pastedFile.name}</p>
-              <p className="text-sm text-muted-foreground">
-                {(pastedFile.size / 1024 / 1024).toFixed(2)} MB
-              </p>
-            </div>
-          )}
-        </div>
-
-        <div className="p-4 flex items-center gap-4 bg-background/90 border-t">
-          <textarea
-            ref={inputRef}
-            rows={1}
-            value={message}
-            onChange={handleInputChange}
-            onKeyDown={handleKeyPress}
-            placeholder="Añadir un comentario..."
-            className="w-full resize-none border-none bg-transparent text-sm placeholder:text-muted-foreground focus-visible:outline-none"
-          />
-          <Button
-            size="icon"
-            className="h-12 w-12 shrink-0 rounded-full bg-primary text-primary-foreground"
-            onClick={handleSend}
-            disabled={isLoading}
-          >
-            <SendHorizontal />
-          </Button>
-        </div>
-      </div>
+    return (
+      <ChatAttachmentPreview
+        file={pastedFile}
+        previewUrl={pastedFilePreviewUrl}
+        message={message}
+        isLoading={isLoading}
+        onMessageChange={setMessage}
+        onSend={handleSend}
+        onCancel={cancelPreview}
+      />
     );
-    return createPortal(previewContent, document.body);
   }
-
 
   return (
     <>
-      <div className="px-2 py-4 flex justify-between w-full items-end gap-2"
-        style={{
-          display: isDisabled ? "" : "none"
-        }}
+      {/* Campo deshabilitado: se muestra cuando el chat no pertenece al usuario */}
+      <div
+        className="px-2 py-4 flex justify-between w-full items-end gap-2"
+        style={{ display: isDisabled ? "" : "none" }}
       >
         <IonInput
           name="message"
           disabled={isDisabled}
+          aria-label="Campo de mensaje (deshabilitado)"
           className={cn(
-            "max-h-8 px-4 py-3 bg-background text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 w-full rounded-md flex items-center h-8 resize-none",
-
+            "max-h-8 px-4 py-3 bg-background text-sm placeholder:text-muted-foreground",
+            "focus-visible:outline-none focus-visible:ring-ring",
+            "disabled:cursor-not-allowed disabled:opacity-50 w-full rounded-md flex items-center h-8 resize-none"
           )}
         />
       </div>
-      <div className="px-2 py-4 flex justify-between w-full items-center gap-2"
-        style={{
-          display: isDisabled ? "none" : ""
-        }}
-      >
 
+      {/* Campo activo: adjuntar, texto / grabación, botón de envío */}
+      <div
+        className="px-2 py-4 flex justify-between w-full items-center gap-2"
+        style={{ display: isDisabled ? "none" : "" }}
+      >
+        {/* Botón de adjuntar archivo */}
         <div className="flex items-center gap-2">
           <input
             type="file"
             ref={fileInputRef}
             className="hidden"
+            aria-label="Adjuntar archivo"
             onChange={handleFileChange}
           />
           <Button
             variant="ghost"
             size="icon"
             className="h-9 w-9"
+            aria-label="Adjuntar archivo"
             onClick={() => fileInputRef.current?.click()}
           >
             <Upload size={20} className="text-muted-foreground" />
           </Button>
         </div>
 
-        <AnimatePresence initial={false}>
-          <motion.div
-            key="input"
-            className={cn(
-              "w-full relative",
-              isDraggingOver && "outline-dashed outline-2 outline-primary rounded-lg"
-            )}
-            initial={{ opacity: 0, scale: 1 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 1 }}
-            onDragOver={handleDragOver}
-            onDragEnter={handleDragEnter}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-          >
-            {isRecording ? (
-              <div className="flex items-center gap-2 p-2 rounded-md bg-muted/50 w-full">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={stopRecording}
-                  className="h-9 w-9 shrink-0 text-red-500 animate-pulse"
-                >
-                  <StopCircle size={22} />
-                </Button>
-                <span className="text-sm font-medium text-red-600">{formatTime(recordingTime)}</span>
-              </div>
-            ) : audioBlob && audioUrl ? (
-              <div className="flex items-center gap-2 p-2 rounded-md bg-muted/50 w-full">
-                <audio src={audioUrl} controls className="max-w-[120px] h-8" />
-                <Button
-                  onClick={() => {
-                    setAudioBlob(null);
-                    setAudioUrl(null);
-                    setRecordingTime(0);
-                  }}
-                  className="h-9 w-9 shrink-0 text-muted-foreground hover:text-red-500"
-                  variant="ghost"
-                  size="icon"
-                  title="Borrar grabación"
-                >
-                  <Trash />
-                </Button>
-              </div>
-            ) : (
-              <div className="flex flex-col w-full rounded-lg border bg-background">
-                <IonInput
-                  value={message}
-                  onIonInput={(e) => setMessage(e.detail.value!)}
-
-                  placeholder={"Escribe un mensaje..."}
-                  className="w-full resize-none border-none bg-transparent px-4 py-3 text-sm placeholder:text-muted-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+        {/* Área de entrada: texto o grabación de audio */}
+        <LazyMotion features={domAnimation}>
+          <AnimatePresence initial={false}>
+            <m.div
+              key="input"
+              className={cn(
+                "w-full relative",
+                isDraggingOver &&
+                  "outline-dashed outline-2 outline-primary rounded-lg"
+              )}
+              initial={{ opacity: 0, scale: 1 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 1 }}
+              onDragOver={handleDragOver}
+              onDragEnter={handleDragEnter}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+            >
+              {/* Subcomponente de grabación de audio */}
+              {(isRecording || audioBlob) ? (
+                <ChatAudioRecorder
+                  isRecording={isRecording}
+                  recordingTime={recordingTime}
+                  audioUrl={audioUrl}
+                  audioBlob={audioBlob}
+                  onStopRecording={stopRecording}
+                  onDiscardAudio={handleDiscardAudio}
                 />
-              </div>
-            )}
-          </motion.div>
+              ) : (
+                <div className="flex flex-col w-full rounded-lg border bg-background">
+                  <IonInput
+                    value={message}
+                    onIonInput={(e) => setMessage(e.detail.value!)}
+                    placeholder="Escribe un mensaje..."
+                    aria-label="Escribe un mensaje"
+                    className="w-full resize-none border-none bg-transparent px-4 py-3 text-sm placeholder:text-muted-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                  />
+                </div>
+              )}
+            </m.div>
 
-          {message.trim() || audioBlob ? (
-            <Button
-              className="h-9 w-9 shrink-0"
-              onClick={handleSend}
-              disabled={isLoading || isDisabled}
-              variant="ghost"
-              size="icon"
-            >
-              <SendHorizontal size={22} className="text-muted-foreground" />
-            </Button>
-          ) : (
-            <Button
-              className="h-9 w-9 shrink-0"
-              onClick={startRecording}
-              disabled={isDisabled}
-              variant="ghost"
-              size="icon"
-            >
-              <Mic size={22} className="text-muted-foreground" />
-            </Button>
-          )}
-        </AnimatePresence>
+            {/* Botón de enviar (si hay contenido) o de iniciar grabación */}
+            {message.trim() || audioBlob ? (
+              <Button
+                className="h-9 w-9 shrink-0"
+                onClick={handleSend}
+                disabled={isLoading || isDisabled}
+                variant="ghost"
+                size="icon"
+                aria-label="Enviar mensaje"
+              >
+                <SendHorizontal size={22} className="text-muted-foreground" />
+              </Button>
+            ) : (
+              <Button
+                className="h-9 w-9 shrink-0"
+                onClick={startRecording}
+                disabled={isDisabled}
+                variant="ghost"
+                size="icon"
+                aria-label="Iniciar grabación de voz"
+              >
+                <Mic size={22} className="text-muted-foreground" />
+              </Button>
+            )}
+          </AnimatePresence>
+        </LazyMotion>
       </div>
     </>
   );

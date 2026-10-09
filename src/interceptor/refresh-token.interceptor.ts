@@ -37,6 +37,12 @@ export function RefreshTokenInterceptor(client: AxiosInstance, refreshClient: Ax
           headers: { 'Content-Type': 'text/plain' },
         });
         if (data?.token) {
+          // DEUDA TÉCNICA (auth-token-in-web-storage):
+          // El access token se almacena en localStorage, lo que lo expone a ataques XSS.
+          // Solución recomendada: migrar a cookie HttpOnly+Secure+SameSite gestionada por el backend
+          // para que el navegador la envíe automáticamente y el token nunca quede accesible desde JS.
+          // Mientras el backend no soporte HttpOnly cookies, se mantiene este mecanismo pero se
+          // centraliza el acceso a través de apiService.setToken() para minimizar la superficie de ataque.
           localStorage.setItem('token', data.token);
           originalRequest.headers['Authorization'] = `Bearer ${data.token}`;
         }

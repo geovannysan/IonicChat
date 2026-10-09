@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, useMemo, useCallback, ReactNode } from 'react';
 
 interface ThemeContextType {
   isDark: boolean;
@@ -25,15 +25,29 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
     return saved === 'light' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches);
   });
 
-  const toggleTheme = () => {
+  // no-impure-state-updater / no-side-effect-in-state-updater-function:
+  // El updater de setState debe ser puro (solo calcular y retornar el nuevo estado).
+  // React puede invocar updaters más de una vez en Strict Mode, lo que causaría
+  // que localStorage y DOM se actualicen de forma duplicada.
+  // Solución: calcular el nuevo valor fuera del updater, aplicar los efectos
+  // secundarios en el manejador del evento y pasar el valor calculado a setIsDark.
+  const toggleTheme = useCallback(() => {
     const newTheme = !isDark;
-    setIsDark(newTheme);
+    // Efectos secundarios: fuera del updater, en el manejador del evento.
     localStorage.setItem('theme', newTheme ? 'dark' : 'light');
     document.body.classList.toggle('dark', newTheme);
-  };
+    // Updater puro: simplemente asigna el nuevo valor calculado.
+    setIsDark(newTheme);
+  }, [isDark]);
+
+  // jsx-no-constructed-context-values: memoizar el value evita re-renders en todos los
+  // consumidores cada vez que el Provider re-renderiza por otras razones.
+  // toggleTheme es estable (useCallback con deps []), por lo que se puede incluir
+  // en el array de dependencias del useMemo sin riesgo de re-creación infinita.
+  const value = useMemo(() => ({ isDark, toggleTheme }), [isDark, toggleTheme]);
 
   return (
-    <ThemeContext.Provider value={{ isDark, toggleTheme }}>
+    <ThemeContext.Provider value={value}>
       {children}
     </ThemeContext.Provider>
   );

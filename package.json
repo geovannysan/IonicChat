@@ -18,7 +18,7 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@capacitor/android": "^6.2.1",
+    "@capacitor/android": "^6.2.2",
     "@capacitor/app": "^6.0.0",
     "@capacitor/cli": "^6.2.1",
     "@capacitor/core": "^6.2.1",
@@ -26,7 +26,6 @@
     "@capacitor/geolocation": "^6.0.0",
     "@capacitor/haptics": "^6.0.0",
     "@capacitor/http": "^0.0.2",
-    "@capacitor/ios": "^6.2.1",
     "@capacitor/keyboard": "^6.0.0",
     "@capacitor/preferences": "^6.0.0",
     "@capacitor/push-notifications": "^6.0.0",
@@ -51,7 +50,7 @@
     "framer-motion": "^12.30.0",
     "ionicons": "^7.4.0",
     "lucide-react": "^0.400.0",
-    "maplibre-gl": "^4.7.1",
+    "maplibre-gl": "^6.11.2",
     "onesignal-cordova-plugin": "^5.3.1",
     "react": "19.0.0",
     "react-day-picker": "^9.13.1",

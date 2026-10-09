@@ -185,7 +185,8 @@ const SoporteTicketsPage: React.FC = () => {
         {activeTab === 'list' && (
           <>
             {isAgendaLoading && <p>Cargando agenda de tickets...</p>}
-            {[...agendaTickets.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())].map((ticket) => (
+            {/* sort inmutable: spread antes de ordenar para no mutar el estado */}
+            {[...agendaTickets].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()).map((ticket) => (
               <IonItem
                 key={ticket.id}
                 button

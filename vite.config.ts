@@ -1,35 +1,38 @@
 /// <reference types="vitest" />
 
-import legacy from '@vitejs/plugin-legacy'
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
-import path from 'path'
+import path from 'node:path'
 
-// https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [
-    react(),
-    legacy()
-  ],
+  plugins: [react()],
+
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "./src"),
+      '@': path.resolve(__dirname, './src'),
     },
   },
+
   test: {
     globals: true,
     environment: 'jsdom',
     setupFiles: './src/setupTests.ts',
   },
+
   build: {
+    target: 'es2020',
     rollupOptions: {
       output: {
         manualChunks(id) {
-          if (id.includes('node_modules')) {
-            return 'vendor'; // Agrupa todas las librerías externas en un solo archivo llamado vendor
+          if (id.includes('node_modules/maplibre-gl/')) {
+            return 'maplibre'
           }
-        }
-      }
-    }
-  }
+
+          if (id.includes('node_modules/')) {
+            return 'vendor'
+          }
+        },
+      },
+    },
+  },
 })

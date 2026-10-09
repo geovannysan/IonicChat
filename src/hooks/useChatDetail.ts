@@ -19,10 +19,10 @@ export const useChatDetail = () => {
     fetchChatHistoryAdd,
     hasMorechat,
     isLoading,
-    addMessage
+    addMessage,
   } = useDataStore();
 
-  const handleMessage = useCallback( (data:{message: {ticketid: number}}) => {
+  const handleMessage = useCallback((data: { message: { ticketid: number } }) => {
     if (!data?.message) return;
     const msg = data.message;
 
@@ -84,29 +84,32 @@ export const useChatDetail = () => {
     }
   }, [ticketChat.id, ticketChat.contactId, fetchChatHistory]);
 
+  // Gestión del ciclo de vida del socket: join al montar, leave al desmontar.
+  // El cleanup garantiza que no queden listeners huérfanos en Android.
   useEffect(() => {
     if (!socket) return;
 
     const join = () => {
-      socket.on("appMessage", handleMessage);
+      socket.on('appMessage', handleMessage);
       if (Number(id) !== 0 && id != null) {
-        socket.emit("joinChatBox", String(id));
-        console.log("Conectado al chat:", id);
+        socket.emit('joinChatBox', String(id));
+        console.log('Conectado al chat:', id);
       }
     };
 
     if (socket.connected) {
       join();
     } else {
-      socket.once("connect", join);
+      socket.once('connect', join);
     }
 
     return () => {
-
-      socket.off("appMessage", handleMessage);
-      socket.off("connect", join);
+      // Quitar listener de mensajes y del evento connect para evitar re-joins
+      socket.off('appMessage', handleMessage);
+      socket.off('connect', join);
+      // Abandonar la sala al desmontar (crítico en Android: Capacitor no destruye el WebSocket)
       if (id) {
-        socket.emit("leaveChatBox", String(id));
+        socket.emit('leaveChatBox', String(id));
       }
     };
   }, [socket, id, handleMessage]);
@@ -119,6 +122,6 @@ export const useChatDetail = () => {
     setMessage,
     scrollRef,
     handleScrolltop,
-    handleSendMessage
+    handleSendMessage,
   };
 };
