@@ -25,14 +25,14 @@ const ChatBubble = React.forwardRef<HTMLDivElement, ChatBubbleProps>(
   ({ className, variant, layout, avatarSrc, avatarFallback, children, ...props }, ref) => (
     <div
       className={cn(
-        chatBubbleVariant({ variant, layout, className }),
+        chatBubbleVariant({ variant, layout }),
         "relative group",
-        variant === "received" ? "mr-12" : "ml-12"
+        variant === "received" ? "mr-10" : "ml-10",
+        className
       )}
       ref={ref}
       {...props}
     >
-      
       {React.Children.map(children, (child) =>
         React.isValidElement(child) && typeof child.type !== "string"
           ? React.cloneElement(child, {
@@ -58,9 +58,11 @@ const ChatBubbleAvatar: React.FC<ChatBubbleAvatarProps> = ({
   fallback,
   className,
 }) => (
-  <Avatar className={cn("h-8 w-8", className)}>
+  <Avatar className={cn("h-7 w-7 shrink-0", className)}>
     <AvatarImage src={src} alt="Avatar" />
-    <AvatarFallback>{fallback}</AvatarFallback>
+    <AvatarFallback className="text-[11px] bg-muted text-muted-foreground">
+      {fallback}
+    </AvatarFallback>
   </Avatar>
 );
 
@@ -80,14 +82,15 @@ const ChatBubbleMessage = React.forwardRef<
   ) => (
     <div
       className={cn(
-        chatBubbleMessageVariants({ variant, layout, className }),
-        "break-words  whitespace-pre-wrap",
+        chatBubbleMessageVariants({ variant, layout }),
+        "break-words whitespace-pre-wrap min-w-[60px]",
+        className,
       )}
       ref={ref}
       {...props}
     >
       {isLoading ? (
-        <div className="flex items-center ">
+        <div className="flex items-center px-1 py-0.5">
           <MessageLoading />
         </div>
       ) : (
@@ -109,7 +112,13 @@ const ChatBubbleTimestamp: React.FC<ChatBubbleTimestampProps> = ({
   className,
   ...props
 }) => (
-  <div className={cn("text-xs mt-2 text-right", className)} {...props}>
+  <div
+    className={cn(
+      "text-[10px] mt-1 select-none opacity-70 text-right",
+      className
+    )}
+    {...props}
+  >
     {timestamp}
   </div>
 );
@@ -130,7 +139,7 @@ const ChatBubbleAction: React.FC<ChatBubbleActionProps> = ({
   <Button
     variant={variant}
     size={size}
-    className={className}
+    className={cn("h-7 w-7 rounded-full", className)}
     onClick={onClick}
     {...props}
   >
@@ -151,7 +160,7 @@ const ChatBubbleActionWrapper = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      "absolute top-1/2 -translate-y-1/2 flex  opacity-100 transition-opacity duration-200",
+      "absolute top-1/2 -translate-y-1/2 flex opacity-0 group-hover:opacity-100 transition-opacity duration-150",
       variant === "sent"
         ? "-left-1 -translate-x-full flex-row-reverse"
         : "-right-1 translate-x-full",

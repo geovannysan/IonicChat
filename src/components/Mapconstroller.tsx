@@ -4,6 +4,9 @@ import { useEffect, useState, useMemo } from "react";
 import { RotateCcw, Mountain, MapPin, Navigation2 } from "lucide-react";
 import { Map, MapControls, MapMarker, MarkerContent, MarkerPopup, useMap, MapRoute } from "./ui/map";
 import { Button } from "./ui/Button";
+import { cn } from "@/lib/utils";
+import {  getStyleMarquer } from "@/pages/Soport/helpers/status.helper";
+import { useHistory } from "react-router-dom";
 
 interface LocationDetail {
   id: string;
@@ -11,6 +14,7 @@ interface LocationDetail {
   lng: number;
   lat: number;
   description?: string;
+  status?:  string;
 }
 
 function calculateDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
@@ -93,6 +97,7 @@ function MapContent({
   onLocate: (coords: { longitude: number; latitude: number }) => void;
 }) {
   const { map, isLoaded } = useMap();
+  const history = useHistory();
 
   const sortedLocations = useMemo(() => {
     return [...locations]
@@ -113,7 +118,7 @@ function MapContent({
 
   const handleStartRoute = async (index: number) => {
     const location = sortedLocations[index];
-    
+
     try {
       const response = await fetch(
         `https://router.project-osrm.org/route/v1/driving/${userLocation.lng},${userLocation.lat};${location.lng},${location.lat}?overview=full&geometries=geojson&alternatives=true`
@@ -124,16 +129,16 @@ function MapContent({
         throw new Error(`Error al obtener la ruta: ${response.status} ${response.statusText}`);
       }
       const data = await response.json();
-      
+
       if (data.code === 'Ok' && data.routes?.[0]) {
         const coordinates = data.routes[0].geometry.coordinates;
-        
+
         if (map) {
           if (map.getSource('active-route')) {
             map.removeLayer('active-route');
             map.removeSource('active-route');
           }
-          
+
           map.addSource('active-route', {
             type: 'geojson',
             data: {
@@ -145,7 +150,7 @@ function MapContent({
               }
             } as any
           });
-          
+
           map.addLayer({
             id: 'active-route',
             type: 'line',
@@ -160,11 +165,11 @@ function MapContent({
               'line-opacity': 0.9
             }
           });
-          
+
           const bounds = coordinates.reduce((bounds: any, coord: any) => {
             return bounds.extend(coord);
           }, new (window as any).maplibregl.LngLatBounds(coordinates[0], coordinates[0]));
-          
+
           map.fitBounds(bounds, { padding: 50 });
         }
       }
@@ -225,43 +230,53 @@ function MapContent({
           key={location.id}
           longitude={location.lng}
           latitude={location.lat}
+
         >
           <MarkerContent>
             <div className="relative">
-              <MapPin className="fill-red-500 stroke-white" size={28} />
-              <span className="absolute top-0 left-1/2 -translate-x-1/2 text-xs font-bold text-white">
-                {index + 1}
-              </span>
+              <MapPin className={cn(getStyleMarquer(location.status ?? ''))} size={28} />
             </div>
           </MarkerContent>
-          <MarkerPopup closeButton>
-            <div className="space-y-2">
-              <p className="font-medium text-foreground">{location.name}</p>
+          <MarkerPopup closeButton className={cn("space-y-1")
+          } >
+            <div >
+              <div className="flex items-center gap-2">
+                <p className="font-medium text-foreground">{location.name} Estado: {location.status}</p>
+               
+              </div>
               {location.description && (
                 <p className="text-xs text-muted-foreground">{location.description}</p>
               )}
               <p className="text-xs font-semibold text-blue-600">
-                 {location.distance.toFixed(2)} km
+                {location.distance.toFixed(2)} km
               </p>
               <p className="text-xs text-muted-foreground">
                 {location.lat.toFixed(4)}, {location.lng.toFixed(4)}
               </p>
               <div className="flex gap-2">
-                <Button 
-                  size="sm" 
+                <Button
+                  size="sm"
                   className="flex-1"
                   onClick={() => handleStartRoute(index)}
                 >
                   <Navigation2 className="size-4 mr-1.5" />
                   Iniciar ruta
                 </Button>
-                <Button 
-                  size="sm" 
+                <Button
+                  size="sm"
                   variant="secondary"
                   className="flex-1"
                   onClick={() => handleOpenGoogleMaps(index)}
                 >
                   Google Maps
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  className="flex-1"
+                  onClick={() => history.push(`/agenda/${location.id}`)}
+                >
+                  Ver Detalle
                 </Button>
               </div>
             </div>
@@ -280,9 +295,9 @@ export function DraggableMarkerExample({
   lng: number;
   lat: number;
   locations?: LocationDetail[];
+  status?: string
 }>) {
   const [userLocation, setUserLocation] = useState({ lng, lat });
-  const [showRoutes, setShowRoutes] = useState(false);
 
   useEffect(() => {
     setUserLocation({ lng, lat });
@@ -298,7 +313,7 @@ export function DraggableMarkerExample({
         <MapContent
           userLocation={userLocation}
           locations={locations}
-          showRoutes={showRoutes}
+          showRoutes={false}
           onLocate={handleLocate}
         />
       </Map>

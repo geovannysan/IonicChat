@@ -7,7 +7,7 @@ import { create } from 'zustand'
 interface DataStore {
   chats: any[],
   chatHistory: any[]
-  ticketChat: any,
+  ticketChat: any | null,
   notify: INotificatyion[],
   isLoading: boolean
   error: string | null
@@ -94,7 +94,7 @@ export const useDataStore = create<DataStore>((set) => ({
     try {
       const data: any = await apiService.getTicketsList(id)
       const { ticket, count, hasMore } = data
-      set((state) => {
+      set(() => {
 
         return { chats: ticket, isLoading: false }
       })
@@ -105,7 +105,40 @@ export const useDataStore = create<DataStore>((set) => ({
   },
   deletteChat: () => {
     set({
-      chatHistory: [], isLoading: true
+      chatHistory: [],
+      isLoading: false,
+      ticketChat: {
+        id: 0,
+        status: '',
+        unreadMessages: 0,
+        lastMessage: '',
+        isGroup: false,
+        userId: null,
+        contactId: 0,
+        whatsappId: 0,
+        queueId: null,
+        createdAt: '',
+        updatedAt: '',
+        ChatPerfil: {
+          id: 0,
+          conexionID: 0,
+          conexiontype: {
+            id: 0,
+            tipo: ''
+          }
+        },
+        Contact: {
+          id: 0,
+          name: '',
+          number: '',
+          profilePicURl: '',
+          typeContact: '',
+          isGroup: false,
+          createdAt: '',
+          updatedAt: '',
+          extraInfo: []
+        }
+      }
     })
   },
 
@@ -193,43 +226,9 @@ export const useDataStore = create<DataStore>((set) => ({
   },
   setSelectedTicketChat: async (ticket: ChatItem) => {
     set({
-      ticketChat: {
-        id: 0,
-        status: '',
-        unreadMessages: 0,
-        lastMessage: '',
-        isGroup: false,
-        userId: null,
-        contactId: 0,
-        whatsappId: 0,
-        queueId: null,
-        createdAt: '',
-        updatedAt: '',
-        ChatPerfil: {
-          id: 0,
-          conexionID: 0,
-          conexiontype: {
-            id: 0,
-            tipo: ''
-          }
-        },
-        Contact: {
-          id: 0,
-          name: '',
-          number: '',
-          profilePicURl: '',
-          typeContact: '',
-          isGroup: false,
-          createdAt: '',
-          updatedAt: '',
-          extraInfo: []
-        }
-      },
-      isLoading: true
-    })    // Limpia
-    set({ ticketChat: ticket })// Luego asigna
-    
-
+      ticketChat: ticket,
+      isLoading: false
+    });
   },
 
   addChatTickte: (chat) => {

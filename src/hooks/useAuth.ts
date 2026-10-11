@@ -75,12 +75,7 @@ export const useAuth = () => {
         }
     });
 
-    const [anality, setAnality] = useState<{
-        status: any[]
-        tiempoPromedio: any[],
-        data: any[],
-        promedio: any[]
-    }>();
+  
 
     const { addChatTickte, addChatnotify, deleteChat, deleteNotify, fetchUsers } = useDataStore();
     const currentRoomRef = useRef<any | null>(null);
@@ -120,6 +115,8 @@ export const useAuth = () => {
                         setLoading(false);
                         globalThis.location.href = "/";
                     }
+                }finally {
+                    setLoading(false);
                 }
             })();
         } else {
@@ -236,9 +233,6 @@ export const useAuth = () => {
             socket.emit("joinEmpresaRoom", empresaIdAnterior);
             setEmpresaIdActual(empresaIdAnterior);
 
-            apiService.getAnalytics().then((response: any) => {
-                setAnality(response.data);
-            }).catch(console.error);
         }
     }, [empresaIdAnterior, empresaIdActual, user?.perfil]);
 
@@ -326,7 +320,6 @@ export const useAuth = () => {
         empresaIdActual,
         ticketChats,
         setTicketChats,
-        anality,
         messagesState,
         setMessagesState,
         addChatTickte, addChatnotify, deleteChat, deleteNotify

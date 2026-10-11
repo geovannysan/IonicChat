@@ -1,7 +1,7 @@
 import { cva, type VariantProps } from "class-variance-authority";
 
 export const chatBubbleVariant = cva(
-  "flex gap-2 max-w-[60%] items-end relative group",
+  "flex gap-2 max-w-[75%] items-end relative group",
   {
     variants: {
       variant: {
@@ -20,22 +20,27 @@ export const chatBubbleVariant = cva(
   }
 );
 
-export const chatBubbleMessageVariants = cva("p-3 text-sm", {
-  variants: {
-    variant: {
-      received: "bg-gray-200 text-gray-800 rounded-lg",
-      sent: "bg-blue-500 text-white rounded-lg",
+export const chatBubbleMessageVariants = cva(
+  "px-3.5 py-2.5 text-sm leading-relaxed shadow-sm",
+  {
+    variants: {
+      variant: {
+        received:
+          "bg-card text-foreground rounded-2xl rounded-bl-sm border border-border/60",
+        sent:
+          "bg-primary text-primary-foreground rounded-2xl rounded-br-sm",
+      },
+      layout: {
+        default: "",
+        ai: "border-t w-full rounded-none bg-transparent shadow-none",
+      },
     },
-    layout: {
-      default: "",
-      ai: "border-t w-full rounded-none bg-transparent",
+    defaultVariants: {
+      variant: "received",
+      layout: "default",
     },
-  },
-  defaultVariants: {
-    variant: "received",
-    layout: "default",
-  },
-});
+  }
+);
 
 export type ChatBubbleVariantProps = VariantProps<typeof chatBubbleVariant>;
 export type ChatBubbleMessageVariantProps = VariantProps<typeof chatBubbleMessageVariants>;

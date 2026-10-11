@@ -25,7 +25,6 @@ import { VoiceRecorder } from "capacitor-voice-recorder";
 import { Mic, SendHorizontal, Upload } from "lucide-react";
 import { apiService } from "../../../services/api";
 import { IonInput } from "@ionic/react";
-import { Button } from "../Button";
 import { ChatAttachmentPreview } from "./ChatAttachmentPreview";
 import { ChatAudioRecorder } from "./ChatAudioRecorder";
 
@@ -266,117 +265,120 @@ export default function ChatBottombar({
   }
 
   return (
-    <>
-      {/* Campo deshabilitado: se muestra cuando el chat no pertenece al usuario */}
-      <div
-        className="px-2 py-4 flex justify-between w-full items-end gap-2"
-        style={{ display: isDisabled ? "" : "none" }}
-      >
-        <IonInput
-          name="message"
-          disabled={isDisabled}
-          aria-label="Campo de mensaje (deshabilitado)"
-          className={cn(
-            "max-h-8 px-4 py-3 bg-background text-sm placeholder:text-muted-foreground",
-            "focus-visible:outline-none focus-visible:ring-ring",
-            "disabled:cursor-not-allowed disabled:opacity-50 w-full rounded-md flex items-center h-8 resize-none"
-          )}
-        />
-      </div>
-
-      {/* Campo activo: adjuntar, texto / grabación, botón de envío */}
-      <div
-        className="px-2 py-4 flex justify-between w-full items-center gap-2"
-        style={{ display: isDisabled ? "none" : "" }}
-      >
-        {/* Botón de adjuntar archivo */}
-        <div className="flex items-center gap-2">
-          <input
-            type="file"
-            ref={fileInputRef}
-            className="hidden"
-            aria-label="Adjuntar archivo"
-            onChange={handleFileChange}
-          />
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-9 w-9"
-            aria-label="Adjuntar archivo"
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <Upload size={20} className="text-muted-foreground" />
-          </Button>
+    <div className="px-3 py-2.5">
+      {/* Campo deshabilitado */}
+      {isDisabled && (
+        <div className="flex items-center justify-center px-4 py-2.5 rounded-2xl bg-muted/60 border border-border">
+          <span className="text-xs text-muted-foreground select-none">
+            Solo el agente asignado puede responder
+          </span>
         </div>
+      )}
 
-        {/* Área de entrada: texto o grabación de audio */}
-        <LazyMotion features={domAnimation}>
-          <AnimatePresence initial={false}>
-            <m.div
-              key="input"
-              className={cn(
-                "w-full relative",
-                isDraggingOver &&
-                  "outline-dashed outline-2 outline-primary rounded-lg"
-              )}
-              initial={{ opacity: 0, scale: 1 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 1 }}
-              onDragOver={handleDragOver}
-              onDragEnter={handleDragEnter}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
+      {/* Campo activo */}
+      {!isDisabled && (
+        <div
+          className={cn(
+            "flex items-end gap-2 px-3 py-2 rounded-2xl border bg-card transition-colors duration-200",
+            isDraggingOver
+              ? "border-primary ring-2 ring-primary/20 bg-primary/5"
+              : "border-border hover:border-muted-foreground/40"
+          )}
+          onDragOver={handleDragOver}
+          onDragEnter={handleDragEnter}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        >
+          {/* Botón adjuntar */}
+          <div className="flex items-center pb-1 shrink-0">
+            <input
+              type="file"
+              ref={fileInputRef}
+              className="hidden"
+              aria-label="Adjuntar archivo"
+              onChange={handleFileChange}
+            />
+            <button
+              type="button"
+              aria-label="Adjuntar archivo"
+              onClick={() => fileInputRef.current?.click()}
+              className="h-8 w-8 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer"
             >
-              {/* Subcomponente de grabación de audio */}
-              {(isRecording || audioBlob) ? (
-                <ChatAudioRecorder
-                  isRecording={isRecording}
-                  recordingTime={recordingTime}
-                  audioUrl={audioUrl}
-                  audioBlob={audioBlob}
-                  onStopRecording={stopRecording}
-                  onDiscardAudio={handleDiscardAudio}
-                />
-              ) : (
-                <div className="flex flex-col w-full rounded-lg border bg-background">
-                  <IonInput
-                    value={message}
-                    onIonInput={(e) => setMessage(e.detail.value!)}
-                    placeholder="Escribe un mensaje..."
-                    aria-label="Escribe un mensaje"
-                    className="w-full resize-none border-none bg-transparent px-4 py-3 text-sm placeholder:text-muted-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
-                  />
-                </div>
-              )}
-            </m.div>
+              <Upload size={16} />
+            </button>
+          </div>
 
-            {/* Botón de enviar (si hay contenido) o de iniciar grabación */}
-            {message.trim() || audioBlob ? (
-              <Button
-                className="h-9 w-9 shrink-0"
-                onClick={handleSend}
-                disabled={isLoading || isDisabled}
-                variant="ghost"
-                size="icon"
-                aria-label="Enviar mensaje"
-              >
-                <SendHorizontal size={22} className="text-muted-foreground" />
-              </Button>
-            ) : (
-              <Button
-                className="h-9 w-9 shrink-0"
-                onClick={startRecording}
-                disabled={isDisabled}
-                variant="ghost"
-                size="icon"
-                aria-label="Iniciar grabación de voz"
-              >
-                <Mic size={22} className="text-muted-foreground" />
-              </Button>
-            )}
-          </AnimatePresence>
-        </LazyMotion>
-      </div>
-    </>
+          {/* Área de entrada o grabación */}
+          <div className="flex-1 min-w-0">
+            <LazyMotion features={domAnimation}>
+              <AnimatePresence initial={false}>
+                <m.div
+                  key="input"
+                  className="w-full"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                >
+                  {(isRecording || audioBlob) ? (
+                    <ChatAudioRecorder
+                      isRecording={isRecording}
+                      recordingTime={recordingTime}
+                      audioUrl={audioUrl}
+                      audioBlob={audioBlob}
+                      onStopRecording={stopRecording}
+                      onDiscardAudio={handleDiscardAudio}
+                    />
+                  ) : (
+                    <IonInput
+                      value={message}
+                      onIonInput={(e) => setMessage(e.detail.value!)}
+                      placeholder="Escribe un mensaje..."
+                      aria-label="Escribe un mensaje"
+                      className="w-full bg-transparent text-sm placeholder:text-muted-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 py-1.5"
+                    />
+                  )}
+                </m.div>
+              </AnimatePresence>
+            </LazyMotion>
+          </div>
+
+          {/* Botón enviar o micrófono */}
+          <div className="pb-1 shrink-0">
+            <LazyMotion features={domAnimation}>
+              <AnimatePresence mode="wait" initial={false}>
+                {message.trim() || audioBlob ? (
+                  <m.button
+                    key="send"
+                    type="button"
+                    aria-label="Enviar mensaje"
+                    initial={{ scale: 0.5, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ duration: 0.12 }}
+                    onClick={handleSend}
+                    disabled={isLoading}
+                    className="h-9 w-9 rounded-full flex items-center justify-center bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-md cursor-pointer disabled:opacity-50 active:scale-95"
+                  >
+                    <SendHorizontal size={16} className="translate-x-px" />
+                  </m.button>
+                ) : (
+                  <m.button
+                    key="mic"
+                    type="button"
+                    aria-label="Iniciar grabación de voz"
+                    initial={{ scale: 0.5, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ duration: 0.12 }}
+                    onClick={startRecording}
+                    className="h-9 w-9 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer active:scale-95"
+                  >
+                    <Mic size={16} />
+                  </m.button>
+                )}
+              </AnimatePresence>
+            </LazyMotion>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

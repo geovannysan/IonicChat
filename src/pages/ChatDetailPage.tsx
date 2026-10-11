@@ -1,28 +1,22 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useEffect, useRef} from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   IonContent,
   IonHeader,
   IonPage,
-  IonTitle,
   IonToolbar,
   IonButtons,
   IonButton,
   IonIcon,
-  IonText,
   IonFooter,
-  IonSpinner,
   IonPopover,
   IonList,
   IonItem,
   IonLabel,
   useIonViewWillLeave,
-  useIonViewDidEnter
+  useIonViewDidEnter,
 } from '@ionic/react';
-import {
-  ellipsisVertical,
-  arrowBack
-} from 'ionicons/icons';
+import { ellipsisVertical, arrowBack } from 'ionicons/icons';
 import { ChatLists } from '../components/ui/chat/chat-list';
 import { useChatDetail } from '../hooks/useChatDetail';
 import './ChatDetailPage.css';
@@ -32,191 +26,175 @@ import apiService from '@/services/api';
 import { useDataStore } from '@/stores/useTicketsChat';
 import { useHistory } from 'react-router';
 import { App } from '@capacitor/app';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
 const ChatDetailPage: React.FC = () => {
-  const { user } = useAuthContext()
-  const history = useHistory()
+  const { user } = useAuthContext();
+  const history = useHistory();
   const popoverRef = useRef<HTMLIonPopoverElement>(null);
+
   const {
     ticketChat,
     chatHistory,
-
     scrollRef,
-    handleScrolltop
+    handleScrolltop,
   } = useChatDetail();
+
   const {
-    setSelectedTicketChat, deleteChat,
-    fetchChatHistory,
-    deletteChat, isLoading
+    setSelectedTicketChat,
+    deleteChat,
+    
+    deletteChat,
+    isLoading,
   } = useDataStore();
+
   const handleSubmit = async () => {
-
     try {
-      const chat: any = await apiService.request("/Tickets/open/" + ticketChat.id + "/" + user.id,);
+      const chat: any = await apiService.request(
+        '/Tickets/open/' + ticketChat.id + '/' + user.id
+      );
       setSelectedTicketChat(chat);
-      //fetchChatHistory(chat.id, 1)
       popoverRef.current?.dismiss();
-
     } catch (error) {
-      console.error("Error al enviar:", error);
+      console.error('Error al abrir ticket:', error);
     }
   };
+
   const handleClose = async () => {
-    history.replace("/tabs/chat")
+    history.replace('/tabs/chat');
     try {
-      await apiService.request("/Tickets/" + ticketChat.id, {
+      await apiService.request('/Tickets/close' + ticketChat.id, {
         method: 'DELETE',
       });
       deleteChat(ticketChat.id);
-
-
-
     } catch (error) {
-      console.error("Error al enviar:", error);
+      console.error('Error al resolver ticket:', error);
     }
   };
+
   const backButtonListener = useRef<any>(null);
 
   useIonViewDidEnter(() => {
-    // Escuchamos el evento del botón atrás de Capacitor
-    // Usamos una lógica de intercepción
-    backButtonListener.current = App.addListener('backButton', ({ canGoBack }) => {
-
-      if (canGoBack) {
-        // Si la aplicación puede navegar hacia atrás, lo hacemos
+    backButtonListener.current = App.addListener(
+      'backButton',
+      ({ canGoBack }) => {
         deletteChat();
-        history.replace("/tabs/chat")
-      } else {
-        // Si no puede navegar hacia atrás, salimos de la aplicación
-        history.replace("/tabs/chat")
+        if (canGoBack) {
+          history.replace('/tabs/chat');
+        } else {
+          history.replace('/tabs/chat');
+        }
       }
-
-    });
+    );
   });
 
   useIonViewWillLeave(() => {
-    // MUY IMPORTANTE: Limpiar el listener al salir de la página
     if (backButtonListener.current) {
       backButtonListener.current.remove();
     }
   });
+
   useEffect(() => {
-    fetchChatHistory(ticketChat.id, 1)
     return () => {
       deletteChat();
-    }
-  }, [ticketChat.id, fetchChatHistory, deletteChat]);
-  if (!ticketChat.id) {
-    return (
-      <IonPage>
-        <IonContent className="ion-padding">
-          <div className="flex justify-center items-center h-full">
-            <IonSpinner name="crescent" />
-          </div>
-        </IonContent>
-      </IonPage>
-    );
-  }
+    };
+  }, [deletteChat]);
+
+  
+
+  const contactName = ticketChat.Contact?.name || 'Usuario';
+  const contactNumber = ticketChat.Contact?.number || '';
+  const initials = contactName.substring(0, 2).toUpperCase();
 
   return (
     <IonPage>
-      <IonHeader>
-        <IonToolbar>
+      {/* ── Header ── */}
+      <IonHeader className="ion-no-border">
+        <IonToolbar className="border-b border-border bg-card">
           <IonButtons slot="start">
-            <IonButton size='small' onClick={() => {
-              history.goBack()
-              deletteChat()
-            }} >
+            <IonButton
+              fill="clear"
+              onClick={() => {
+                history.goBack();
+                deletteChat();
+              }}
+            >
               <IonIcon icon={arrowBack} />
             </IonButton>
           </IonButtons>
 
-          <div className="flex items-center">
-
-            <div>
-              <IonTitle size="small" className="text-left">
-                {ticketChat.Contact?.name || 'Usuario'}
-              </IonTitle>
-              <IonText color="medium" className="text-xs">
-                {ticketChat.Contact?.number}
-              </IonText>
+          {/* Avatar + nombre + número */}
+          <div className="flex items-center gap-3 px-1">
+            <Avatar className="w-8 h-8 border border-border shadow-sm shrink-0">
+              <AvatarFallback className="bg-primary/20 text-primary font-semibold text-xs">
+                {initials}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex flex-col min-w-0">
+              <span className="text-sm font-semibold text-foreground leading-tight truncate">
+                {contactName}
+              </span>
+              {contactNumber && (
+                <span className="text-[11px] text-muted-foreground leading-tight truncate">
+                  {contactNumber}
+                </span>
+              )}
             </div>
           </div>
+
           <IonButtons slot="end">
-            <IonButton id="click-trigger">
+            <IonButton id="chat-detail-trigger" fill="clear">
               <IonIcon icon={ellipsisVertical} />
             </IonButton>
           </IonButtons>
-          <IonPopover ref={popoverRef} trigger="click-trigger" triggerAction="click">
+
+          <IonPopover
+            ref={popoverRef}
+            trigger="chat-detail-trigger"
+            triggerAction="click"
+          >
             <IonContent>
               <IonList lines="none">
-                {(ticketChat.userId === null && ticketChat.status !== "open") && (
-                  <IonItem button
-                    onClick={handleSubmit}
-                  >
-
-                    <IonLabel> Abrir</IonLabel>
-                  </IonItem>)}
-                {(ticketChat.status === "open" && (user.id === ticketChat.userId)) && (<IonItem button onClick={handleClose} >
-
-                  <IonLabel>  Resolver</IonLabel>
-                </IonItem>)}
+                {ticketChat.userId === null &&
+                  ticketChat.status !== 'open' && (
+                    <IonItem button onClick={handleSubmit}>
+                      <IonLabel>Abrir</IonLabel>
+                    </IonItem>
+                  )}
+                {ticketChat.status === 'open' &&
+                  user.id === ticketChat.userId && (
+                    <IonItem button onClick={handleClose}>
+                      <IonLabel>Resolver</IonLabel>
+                    </IonItem>
+                  )}
               </IonList>
             </IonContent>
           </IonPopover>
         </IonToolbar>
       </IonHeader>
-      <IonContent>
+
+      {/* ── Mensajes ── */}
+      <IonContent className="ion-no-padding">
         <ChatLists
           messages={chatHistory}
           onScroll={handleScrolltop}
           loading={isLoading}
-          scrollRef={scrollRef.current}
-          type={ticketChat.ChatPerfil.conexionID ?? 1}
+          scrollRef={scrollRef}
+          type={ticketChat.ChatPerfil?.conexionID ?? 1}
         />
       </IonContent>
 
-
-
-      <IonFooter>
-        <IonToolbar>
-
-          <ChatBottombar selectedUser={ticketChat} user={user} isMobile={true} />
-        </IonToolbar>
+      {/* ── Footer: sin IonToolbar doble, directamente ChatBottombar ── */}
+      <IonFooter className="ion-no-border">
+        <div className="bg-card border-t border-border">
+          <ChatBottombar
+            selectedUser={ticketChat}
+            user={user}
+            isMobile={true}
+          />
+        </div>
       </IonFooter>
-      {/* <IonButton fill="clear" size="small" className="flex-shrink-0">
-              <IonIcon icon={attachOutline} color="medium" />
-            </IonButton>
-
-
-            <IonInput
-              value={message}
-              onIonInput={(e) => setMessage(e.detail.value!)}
-              placeholder="Escribe un mensaje..."
-              className=""
-              onKeyPress={(e) => {
-                if (e.key === 'Enter') {
-                  handleSendMessage();
-                }
-              }}
-            />
-
-
-            <IonButton
-              fill={message.trim() ? 'solid' : 'clear'}
-              size="small"
-              onClick={handleSendMessage}
-              disabled={!message.trim()}
-              className="chat-send-button"
-              color={message.trim() ? 'primary' : 'medium'}
-            >
-              <IonIcon icon={sendOutline} />
-            </IonButton> */}
-
-
-
-      {/* ... IonModal ... */}
-    </IonPage >
+    </IonPage>
   );
 };
 

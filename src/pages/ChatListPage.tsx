@@ -3,17 +3,12 @@ import {
   IonContent,
   IonHeader,
   IonPage,
-  IonTitle,
-  IonToolbar,
-  IonList,
   IonRefresher,
   IonRefresherContent,
   IonSpinner,
   IonText,
   IonIcon,
-  IonTabBar,
-  IonTabButton,
-  IonLabel,
+  IonToolbar,
 } from '@ionic/react';
 import {
   chatbubbleOutline,
@@ -161,26 +156,40 @@ const ChatListPage: React.FC = () => {
   return (
     <IonPage>
       <IonHeader className="ion-no-border">
-        <IonToolbar>
-          <IonTitle>Chats</IonTitle>
-          <ChatSearchBar value={searchTerm} onChange={setSearchTerm} />
+        <IonToolbar className="border-b border-border bg-card">
+          {/* Título + búsqueda */}
+          <div className="flex items-center gap-2 px-3 py-2">
+            <span className="text-base font-semibold text-foreground shrink-0">Chats</span>
+            <ChatSearchBar value={searchTerm} onChange={setSearchTerm} />
+          </div>
+
+          {/* Tabs estilo ConversationList */}
+          <div className="grid grid-cols-4 gap-0.5 bg-muted/50 p-1 mx-3 mb-1 rounded-lg">
+            {(
+              [
+                { tab: 'todas',      label: 'Todas' },
+                { tab: 'mias',       label: 'Mías' },
+                { tab: 'pendientes', label: 'Pend.' },
+                { tab: 'asignadas',  label: 'Asig.' },
+              ] as const
+            ).map(({ tab, label }) => (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => setActiveTab(tab)}
+                className={[
+                  'py-1 rounded-md text-[11px] font-medium transition-colors cursor-pointer',
+                  activeTab === tab
+                    ? 'bg-card shadow-sm text-foreground'
+                    : 'text-muted-foreground hover:text-foreground',
+                ].join(' ')}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         </IonToolbar>
       </IonHeader>
-
-      <IonTabBar slot="top" className="ion-no-padding">
-        <IonTabButton tab="todas" onClick={() => setActiveTab('todas')} selected={activeTab === 'todas'}>
-          <IonLabel>Todas</IonLabel>
-        </IonTabButton>
-        <IonTabButton tab="mias" onClick={() => setActiveTab('mias')} selected={activeTab === 'mias'}>
-          <IonLabel>Mias</IonLabel>
-        </IonTabButton>
-        <IonTabButton tab="pendientes" onClick={() => setActiveTab('pendientes')} selected={activeTab === 'pendientes'}>
-          <IonLabel>Pendien.</IonLabel>
-        </IonTabButton>
-        <IonTabButton tab="asignadas" onClick={() => setActiveTab('asignadas')} selected={activeTab === 'asignadas'}>
-          <IonLabel>Asigna.</IonLabel>
-        </IonTabButton>
-      </IonTabBar>
 
       <IonContent className="ion-no-padding">
         <IonRefresher slot="fixed" onIonRefresh={handleRefresh}>
@@ -201,9 +210,8 @@ const ChatListPage: React.FC = () => {
             </IonText>
           </div>
         ) : (
-          <IonList>
+          <div className="divide-y divide-border/60">
             {sortedChats.map((chat) => (
-              // key estable: chat.id en vez de índice
               <ChatListItem
                 key={chat.id}
                 chat={chat}
@@ -211,7 +219,7 @@ const ChatListPage: React.FC = () => {
                 onSelect={handleChatSelect}
               />
             ))}
-          </IonList>
+          </div>
         )}
 
         {isLoading && sortedChats.length === 0 && (

@@ -16,7 +16,7 @@ const getMessageVariant = (fromMe: boolean) =>
 interface ChatListComponentProps {
   messages: Message[];
   onScroll: (e: React.UIEvent<HTMLDivElement>) => void;
-  scrollRef?: React.RefObject<HTMLDivElement> | null;
+  scrollRef?: React.RefObject<HTMLDivElement | null> | null;
   loading: boolean;
   history?: boolean;
   type: string | number;

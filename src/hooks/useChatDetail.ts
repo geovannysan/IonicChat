@@ -1,22 +1,24 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { useParams, useHistory } from 'react-router-dom';
+import { useParams,  } from 'react-router-dom';
 import { useDataStore } from '../stores/useTicketsChat';
 import { useAuthContext } from '@/contexts/AuthContext';
 
 export const useChatDetail = () => {
   const { id } = useParams<{ id: string }>();
   const { socket } = useAuthContext();
-  const history = useHistory();
-  const scrollRef = useRef<React.RefObject<HTMLDivElement>>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const prevScrollHeight = useRef<number>(0);
   const [pageNumber, setPageNumber] = useState(1);
   const [message, setMessage] = useState('');
 
   const {
+    chats,
     ticketChat,
     chatHistory,
+    fetchUsers,
     fetchChatHistory,
     fetchChatHistoryAdd,
+    setSelectedTicketChat,
     hasMorechat,
     isLoading,
     addMessage,
@@ -29,22 +31,22 @@ export const useChatDetail = () => {
     if (id != null && String(id) !== String(msg.ticketid)) return;
 
     const isAtBottom = scrollRef.current
-      ? (() => {
-          const { scrollTop, scrollHeight, clientHeight } = scrollRef.current.current;
-          return scrollHeight - scrollTop - clientHeight < 15;
-        })()
+      ? scrollRef.current.scrollHeight - scrollRef.current.scrollTop - scrollRef.current.clientHeight < 15
       : false;
 
     addMessage(msg);
 
     if (isAtBottom) {
       requestAnimationFrame(() => {
-        if (scrollRef.current?.current) {
-          scrollRef.current.current.scrollTop = scrollRef.current.current.scrollHeight;
+        if (scrollRef.current) {
+          scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
         }
       });
     }
   }, [id, addMessage]);
+
+  const handleMessageRef = useRef(handleMessage);
+  handleMessageRef.current = handleMessage;
 
   const handleScrolltop = (e: React.UIEvent<HTMLDivElement>) => {
     const { scrollTop, scrollHeight } = e.currentTarget;
@@ -62,7 +64,7 @@ export const useChatDetail = () => {
     const nextPage = pageNumber + 1;
     setPageNumber(nextPage);
     await new Promise((res) => setTimeout(res, 1500));
-    await fetchChatHistoryAdd(ticketChat.id, nextPage);
+    await fetchChatHistoryAdd(ticketChat.id || Number(id), nextPage);
   };
 
   const handleSendMessage = async () => {
@@ -71,48 +73,73 @@ export const useChatDetail = () => {
     console.log('Enviando mensaje:', message);
   };
 
+  // Cargar historial y sincronizar ticketChat desde la lista
   useEffect(() => {
-    if (id && ticketChat.id !== parseInt(id)) {
-      history.push('/tabs/chat');
-    }
-  }, [id, ticketChat.id, history]);
+    if (!id || Number(id) === 0) return;
+    const ticketId = parseInt(id, 10);
 
-  useEffect(() => {
-    if (ticketChat.id) {
-      fetchChatHistory(ticketChat.id, 1);
-      setPageNumber(1);
+    if (ticketChat.id !== ticketId) {
+      const found = chats.find((c) => c.id === ticketId);
+      if (found) {
+        setSelectedTicketChat(found);
+      } else if (chats.length === 0) {
+        fetchUsers(1);
+      }
     }
-  }, [ticketChat.id, ticketChat.contactId, fetchChatHistory]);
+
+    fetchChatHistory(ticketId, 1);
+    setPageNumber(1);
+  }, [id, fetchChatHistory, chats, ticketChat.id, setSelectedTicketChat, fetchUsers]);
+
+  // Si la lista de chats se carga después, asignar el ticketChat correspondiente
+  useEffect(() => {
+    if (!id || Number(id) === 0) return;
+    const ticketId = parseInt(id, 10);
+    if (ticketChat.id !== ticketId && chats.length > 0) {
+      const found = chats.find((c) => c.id === ticketId);
+      if (found) {
+        setSelectedTicketChat(found);
+      }
+    }
+  }, [id, chats, ticketChat.id, setSelectedTicketChat]);
 
   // Gestión del ciclo de vida del socket: join al montar, leave al desmontar.
-  // El cleanup garantiza que no queden listeners huérfanos en Android.
+  // El cleanup garantiza que no queden listeners huérfanos ni sobrecargas en el backend.
   useEffect(() => {
-    if (!socket) return;
+    if (!socket || !id || Number(id) === 0) return;
 
-    const join = () => {
-      socket.on('appMessage', handleMessage);
-      if (Number(id) !== 0 && id != null) {
-        socket.emit('joinChatBox', String(id));
-        console.log('Conectado al chat:', id);
-      }
+    const chatId = String(id);
+
+    const onAppMessage = (data: { message: { ticketid: number } }) => {
+      handleMessageRef.current(data);
     };
 
+    const handleJoin = () => {
+      socket.emit('joinChatBox', chatId);
+      console.log('Conectado al chat:', chatId);
+    };
+
+    // Registrar listener de mensajes
+    socket.on('appMessage', onAppMessage);
+
+    // Unirse a la sala si el socket ya está conectado
     if (socket.connected) {
-      join();
-    } else {
-      socket.once('connect', join);
+      handleJoin();
     }
 
+    // Si se reconecta el socket mientras estamos en esta pantalla, volver a unirse
+    socket.on('connect', handleJoin);
+
     return () => {
-      // Quitar listener de mensajes y del evento connect para evitar re-joins
-      socket.off('appMessage', handleMessage);
-      socket.off('connect', join);
-      // Abandonar la sala al desmontar (crítico en Android: Capacitor no destruye el WebSocket)
-      if (id) {
-        socket.emit('leaveChatBox', String(id));
-      }
+      // Limpiar listeners para evitar ejecuciones huérfanas
+      socket.off('appMessage', onAppMessage);
+      socket.off('connect', handleJoin);
+
+      // Abandonar la sala al desmontar (evita sobrecargas y mensajes no deseados)
+      socket.emit('leaveChatBox', chatId);
+      console.log('Desconectado del chat:', chatId);
     };
-  }, [socket, id, handleMessage]);
+  }, [socket, id]);
 
   return {
     ticketChat,

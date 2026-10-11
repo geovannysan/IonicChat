@@ -30,7 +30,6 @@ class ApiService {
     const config: AxiosRequestConfig = {
       ...options,
       url: endpoint,
-      withCredentials: true,
     };
 
     try {
@@ -40,6 +39,7 @@ class ApiService {
       if (axios.isAxiosError(error)) {
         const status = error.response?.status;
         const message = error.response?.data?.message || error.response?.data?.mensaje || error.message;
+        console.error(JSON.stringify(error, null, 2));
         throw new Error(`[${status}] ${message}`);
       }
       throw error;
@@ -118,10 +118,6 @@ class ApiService {
     return this.request('/canales');
   }
 
-  // Analytics - Endpoints exactos de dashboard-chat
-  async getAnalytics() {
-    return this.request('/cuenta/anality');
-  }
 
   // Soporte Tickets - Endpoints exactos de dashboard-chat
   async getSoporteTickets(params?: Record<string, string>) {

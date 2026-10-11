@@ -12,7 +12,6 @@ interface AuthContextType {
   handleLogin: (data: any) => Promise<void>;
   handleLogout: () => Promise<void>;
   handleCuenta: (id: number, cuentaId: string) => Promise<void>;
-  anality: any;
   socket: any;
   ticketChats: ChatItem;
   setTicketChats: (data: ChatItem) => void;

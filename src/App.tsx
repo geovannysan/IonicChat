@@ -83,9 +83,8 @@ const AppContent: React.FC = () => {
         <Route exact path="/login" component={LoginPage} />
         {/* Ruta de chat detail fuera de tabs */}
         <Route exact path="/chat/:id">
-          <PrivateRoute>
+        
             <ChatDetailPage />
-          </PrivateRoute>
         </Route>
         <Route exact path="/agenda/:id">
           <PrivateRoute>

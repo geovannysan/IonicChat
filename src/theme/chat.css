@@ -1,4 +1,4 @@
-/* Chat Styles */
+/* ── Entrada de mensaje ──────────────────────────────────── */
 .message-input-container {
   display: flex;
   align-items: flex-end;
@@ -11,6 +11,7 @@
   max-height: 120px;
 }
 
+/* ── Burbujas legacy (componentes que aún no usan chat-bubble.tsx) ── */
 .message-bubble {
   padding: 8px 12px;
   border-radius: 16px;
@@ -19,14 +20,15 @@
 }
 
 .message-bubble.sent {
-  background-color: var(--ion-color-primary);
-  color: var(--ion-color-primary-contrast);
+  background-color: hsl(var(--bubble-out));
+  color: hsl(var(--bubble-out-foreground));
   margin-left: auto;
 }
 
 .message-bubble.received {
-  background-color: var(--ion-color-light);
-  color: var(--ion-color-dark);
+  background-color: hsl(var(--bubble-in));
+  color: hsl(var(--bubble-in-foreground));
+  border: 1px solid hsl(var(--border) / 0.6);
 }
 
 .message-bubble small {
@@ -46,7 +48,7 @@
   text-align: left;
 }
 
-/* Map Styles */
+/* ── Mapa ──────────────────────────────────────────────── */
 .ticket-map-container {
   position: relative;
 }
@@ -58,11 +60,14 @@
 .maplibregl-popup-content {
   padding: 0;
   border-radius: 8px;
+  background-color: hsl(var(--card));
+  color: hsl(var(--card-foreground));
 }
 
 .maplibregl-popup-close-button {
   font-size: 18px;
   padding: 4px;
+  color: hsl(var(--muted-foreground));
 }
 
 .marker {
@@ -79,26 +84,22 @@
   align-items: center;
   justify-content: center;
   height: 300px;
-  background-color: var(--ion-color-light);
-  color: var(--ion-color-medium);
+  background-color: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
 }
 
-/* Dark mode adjustments */
+/* ── Dark mode ──────────────────────────────────────────── */
 .dark .message-bubble.received {
-  background-color: var(--ion-color-dark);
-  color: var(--ion-color-light);
+  background-color: hsl(var(--bubble-in));
+  color: hsl(var(--bubble-in-foreground));
 }
 
 .dark .map-placeholder {
-  background-color: var(--ion-color-dark);
+  background-color: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
 }
 
 .dark .maplibregl-popup-content {
-  background-color: var(--ion-color-dark);
-  color: var(--ion-color-light);
-}
-
-.maplibregl-canvas {
-  width: 100% !important;
-  height: 100% !important;
+  background-color: hsl(var(--card));
+  color: hsl(var(--card-foreground));
 }

@@ -1,291 +1,303 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, {useState } from 'react';
+import React, { useState } from 'react';
 import {
-  IonButton,
-  IonContent,
-  IonIcon,
-  IonItem, // IonInput removed as it's not needed for userId filter
-  IonLabel,
-  IonList,
-  IonNote,
   IonPage,
-  IonTabBar,
-  IonTabButton,
-  IonToggle // Import IonToggle
+  IonHeader,
+  IonToolbar,
+  IonTitle,
+  IonContent,
+  IonRefresher,
+  IonRefresherContent,
+  IonSpinner,
+  IonIcon,
 } from '@ionic/react';
 import {
   list,
   map,
-  ellipsisVerticalOutline,
-  filterCircleOutline
+  filterCircleOutline,
+  refreshOutline,
+  calendarOutline,
+  personOutline,
+  locationOutline,
 } from 'ionicons/icons';
 import { useHistory } from 'react-router-dom';
-import { format } from "date-fns"; // Import format from date-fns
-import { DateRange } from "react-day-picker"; // Import DateRange type
+import { format } from 'date-fns';
+import { DateRange } from 'react-day-picker';
 import { DraggableMarkerExample } from '@/components/Mapconstroller';
 import { formatWhatsAppDate } from '@/lib/utils';
 import apiService from '@/services/api';
-import { DateRangePicker } from "@/components/ui/date-range-picker";
+import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { useLocation } from '@/hooks/useLocation';
 import { SoporteTicket } from '@/types';
+import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/Badge';
+import { getPriorityDot, getStatusStyle } from './helpers/status.helper';
 
-// Define the interface for the agenda tickets
-interface Contact {
-  profilePicURl: string | null;
-  id: number;
-  name: string;
-  number: string;
-  typeContact: string;
-  isGroup: boolean;
-  accountId: string;
-  createdAt: string;
-  updatedAt: string;
-}
 
-interface AssignedUser {
-  id: number;
-  name: string;
-  profile: string;
-  email: string;
-}
 
-interface AgendaTicket {
-  id: number;
-  accountId: string;
-  contactId: number;
-  assignedUserId: number;
-  subject: string;
-  content: string;
-  channel: string;
-  requesterName: string;
-  requesterEmail: string;
-  requesterPhone: string;
-  visitDate: string;
-  shift: string;
-  scheduledFrom: string | null;
-  priority: string;
-  status: string;
-  latitude: string;
-  longitude: string;
-  address: string;
-  createdBy: string | null;
-  createdAt: string;
-  updatedAt: string;
-  assignedUser: AssignedUser;
-  contact: Contact;
-}
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
+type TabKey = 'list' | 'map' | 'filter';
 
 const SoporteTicketsPage: React.FC = () => {
   const history = useHistory();
-  // const {
-  //   tickets,
-  // } = useTicketStore();
-
   const { latitude, longitude } = useLocation();
 
-  const [activeTab, setActiveTab] = useState<'map' | 'list' | 'settings'>('list');
+  const [activeTab, setActiveTab] = useState<TabKey>('list');
   const [agendaTickets, setAgendaTickets] = useState<SoporteTicket[]>([]);
-  const [isAgendaLoading, setIsAgendaLoading] = useState(false);
-
-  const [filterMine, setFilterMine] = useState<boolean>(false); // New state for "Mine" filter
+  const [isLoading, setIsLoading] = useState(false);
+  const [filterMine, setFilterMine] = useState(false);
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
 
   const getCurrentUserId = (): string | null => {
-    // Assuming user data is stored in localStorage as 'user' object
     const userData = localStorage.getItem('user');
-    if (userData) {
-      const user = JSON.parse(userData);
-      return user.id ? String(user.id) : null;
-    }
-    return null;
+    if (!userData) return null;
+    const user = JSON.parse(userData);
+    return user.id ? String(user.id) : null;
   };
 
-  const fetchAgendaTickets = async (filterByMine: boolean, dateRange: DateRange | undefined) => {
-    setIsAgendaLoading(true);
+  const fetchTickets = async (mine: boolean, range: DateRange | undefined) => {
+    setIsLoading(true);
     try {
       const body: { userId?: string; fechaFin?: string; fechaInicio?: string } = {};
+      if (mine) {
+        const uid = getCurrentUserId();
+        if (uid) body.userId = uid;
+      }
+      if (range?.from) body.fechaInicio = format(range.from, 'yyyy-MM-dd');
+      if (range?.to)   body.fechaFin    = format(range.to,   'yyyy-MM-dd');
 
-      let userIdToFilter: string | null = null;
-      if (filterByMine) {
-        userIdToFilter = getCurrentUserId();
-        if (!userIdToFilter) {
-          throw new Error("User ID not found in localStorage for 'Mine' filter.");
-        }
-        body.userId = userIdToFilter;
-      }
-
-      if (dateRange?.from) {
-        body.fechaInicio = format(dateRange.from, 'yyyy-MM-dd');
-      }
-      if (dateRange?.to) {
-        body.fechaFin = format(dateRange.to, 'yyyy-MM-dd');
-      }
-      
       const response: any = await apiService.request('/soport/filterAgenda', {
         method: 'POST',
-        data: body
+        data: body,
       });
-      console.log('Agenda tickets:', response.ticket, 'with filters:', body);
-      setAgendaTickets(response.ticket);
-      setActiveTab('list')
+      setAgendaTickets(response.ticket ?? []);
+      setActiveTab('list');
     } catch (error) {
       console.error('Error fetching agenda tickets:', error);
-
     } finally {
-      setIsAgendaLoading(false);
+      setIsLoading(false);
     }
   };
 
-
-  // useEffect(() => {
-  //   fetchTickets();
-  // }, [fetchTickets]);
-
-
-
-
-
-
-  const handleTicketSelect = (ticket: SoporteTicket | AgendaTicket) => {
-    history.push(`/agenda/${ticket.id}`)
+  const handleRefresh = async (event: CustomEvent) => {
+    await fetchTickets(filterMine, dateRange);
+    event.detail.complete();
   };
 
+  const sorted = [...agendaTickets].sort(
+    (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+  );
+
+  const tabs: { key: TabKey; icon: string; label: string }[] = [
+    { key: 'list',   icon: list,                label: 'Lista'   },
+    { key: 'map',    icon: map,                 label: 'Mapa'    },
+    { key: 'filter', icon: filterCircleOutline, label: 'Filtrar' },
+  ];
 
   return (
     <IonPage>
-      {/* Contenido dinámico según el estado */}
-      <IonContent>
+      {/* ── Header ── */}
+      <IonHeader className="ion-no-border">
+        <IonToolbar className="border-b border-border bg-card">
+          <IonTitle>Agenda</IonTitle>
+        </IonToolbar>
+
+        {/* Tabs visuales debajo del header */}
+        <div className="flex bg-card border-b border-border">
+          {tabs.map(({ key, icon, label }) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setActiveTab(key)}
+              className={cn(
+                'flex-1 flex flex-col items-center gap-0.5 py-2 text-[11px] font-semibold transition-colors cursor-pointer',
+                activeTab === key
+                  ? 'border-b-2 border-primary text-primary'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              <IonIcon icon={icon} className="text-base" />
+              {label}
+            </button>
+          ))}
+        </div>
+      </IonHeader>
+
+      {/* ── Content ── */}
+      <IonContent className="ion-no-padding">
+
+        {/* Tab: Mapa */}
         {activeTab === 'map' && (
-          <DraggableMarkerExample
-            lat={latitude ?? -2.127554}
-            lng={longitude ?? -79.934464}
-            locations={agendaTickets.length > 0
-              ? agendaTickets
-                .filter(t => {
-                  const lat = Number.parseFloat(t.latitude ?? "");
-                  const lng = Number.parseFloat(t.longitude ?? "");
+          <div className="h-full w-full">
+            <DraggableMarkerExample
+              lat={latitude ?? -2.127554}
+              lng={longitude ?? -79.934464}
+              locations={sorted
+                .filter((t) => {
+                  const lat = Number.parseFloat(t.latitude ?? '');
+                  const lng = Number.parseFloat(t.longitude ?? '');
+                  
                   return (
                     !Number.isNaN(lat) && lat >= -90 && lat <= 90 &&
                     !Number.isNaN(lng) && lng >= -180 && lng <= 180 &&
-                    (lat !== 0 || lng !== 0) // Opcional: filtrar si vienen en 0,0
+                    (lat !== 0 || lng !== 0)
                   );
                 })
-                .map(t => ({
+                .map((t) => ({
                   id: String(t.id),
                   name: t.subject || 'Sin asunto',
-                  lng: Number.parseFloat(t.latitude ?? ""),
-                  lat:Number.parseFloat(t.longitude ?? ""),
-                  description: `${t.requesterName} - ${t.address || 'Sin dirección'}`
-                }))
-              : []
-            }
-          />
+                  lng: Number.parseFloat(t.longitude ?? ''),
+                  lat: Number.parseFloat(t.latitude ?? ''),
+                  description: `${t.requesterName} - ${t.address || 'Sin dirección'}`,
+                  status: t.status
+                }))}
+            />
+          </div>
         )}
 
+        {/* Tab: Lista */}
         {activeTab === 'list' && (
           <>
-            {isAgendaLoading && <p>Cargando agenda de tickets...</p>}
-            {/* sort inmutable: spread antes de ordenar para no mutar el estado */}
-            {[...agendaTickets].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()).map((ticket) => (
-              <IonItem
-                key={ticket.id}
-                button
-                onClick={() => handleTicketSelect(ticket)}
-                className="contact-item"
-              >
-                <IonLabel>
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1 min-w-0">
-                      <strong> {ticket?.subject || 'Ticket sin asunto'}</strong>
-                      <br />
-                      <IonNote color="medium" className="ion-text-wrap">
-                        Solcicitante: {ticket.requesterName}
-                      </IonNote>
-                      <br />
-                      <IonNote color="medium" className="ion-text-wrap">
-                        asignado: {ticket?.assignedUser?.name || 'Sin asignar'} - estado:{ticket?.status || 'Sin dirección'}
-                      </IonNote>
+            <IonRefresher slot="fixed" onIonRefresh={handleRefresh}>
+              <IonRefresherContent
+                pullingIcon={refreshOutline}
+                pullingText="Desliza para actualizar"
+                refreshingSpinner="circles"
+                refreshingText="Actualizando..."
+              />
+            </IonRefresher>
 
+            {isLoading && (
+              <div className="flex justify-center items-center p-8">
+                <IonSpinner name="crescent" />
+              </div>
+            )}
+
+            {!isLoading && sorted.length === 0 && (
+              <div className="flex flex-col items-center justify-center h-64 text-center p-4">
+                <IonIcon icon={calendarOutline} className="text-4xl text-muted-foreground mb-3" />
+                <p className="text-sm text-muted-foreground font-medium">Sin tickets en agenda</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Usa el filtro para buscar tickets
+                </p>
+              </div>
+            )}
+
+            <div className="divide-y divide-border/60 px-0">
+              {sorted.map((ticket) => (
+                <button
+                  key={ticket.id}
+                  type="button"
+                  onClick={() => history.push(`/agenda/${ticket.id}`)}
+                  className="w-full text-left flex gap-3 p-4 hover:bg-muted/40 transition-colors cursor-pointer"
+                >
+                  {/* Indicador de prioridad */}
+                  <div className="flex flex-col items-center pt-1 shrink-0">
+                    <span
+                      className={cn(
+                        'w-2 h-2 rounded-full mt-1',
+                        getPriorityDot(ticket.priority)
+                      )}
+                    />
+                  </div>
+
+                  {/* Contenido */}
+                  <div className="flex-1 min-w-0 flex flex-col gap-1">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="text-sm font-semibold text-foreground leading-tight truncate">
+                        {ticket.subject || 'Ticket sin asunto'}
+                      </p>
+                      <span className="text-[10px] text-muted-foreground shrink-0">
+                        {formatWhatsAppDate(String(ticket.updatedAt))}
+                      </span>
                     </div>
-                    <div className="flex flex-col items-end ml-2">
-                      <div className="flex items-center gap-1 mb-1">
-                        <span className="text-xs text-gray-400">
-                          {formatWhatsAppDate(String(ticket?.updatedAt))}
-                        </span>
+
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <IonIcon icon={personOutline} className="text-[12px] shrink-0" />
+                      <span className="truncate">{ticket.requesterName}</span>
+                    </div>
+
+                    {ticket.address && (
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <IonIcon icon={locationOutline} className="text-[12px] shrink-0" />
+                        <span className="truncate">{ticket.address}</span>
                       </div>
+                    )}
+
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
+                      <span
+                        className={cn(
+                          'inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border',
+                          getStatusStyle(ticket.status)
+                        )}
+                      >
+                        {ticket.status || 'Sin estado'}
+                      </span>
+
+                      {ticket.assignedUser?.name && (
+                        <Badge variant="outline" className="rounded-full h-4 px-1.5 text-[10px] font-medium">
+                          {ticket.assignedUser.name}
+                        </Badge>
+                      )}
                     </div>
                   </div>
-                </IonLabel>
-                <div className="flex items-center gap-1" slot="end">
-                  <IonButton
-                    fill="clear"
-                    size="small"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                    }}
-                  >
-                    <IonIcon icon={ellipsisVerticalOutline} size="small" />
-                  </IonButton>
-                </div>
-              </IonItem>
-            ))}
+                </button>
+              ))}
+            </div>
           </>
         )}
 
-        {activeTab === 'settings' && (
-          <IonList>
-            <IonItem>
-              <IonLabel>Filtrar por mis tickets</IonLabel>
-              <IonToggle
-                checked={filterMine}
-                onIonChange={e => setFilterMine(e.detail.checked)}
-                slot="end"
-              ></IonToggle>
-            </IonItem>
-            <IonItem>
-              <DateRangePicker date={dateRange} setDate={setDateRange}
+        {/* Tab: Filtros */}
+        {activeTab === 'filter' && (
+          <div className="p-4 flex flex-col gap-4">
+            <div className="rounded-xl border border-border bg-card overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+                <div>
+                  <p className="text-sm font-medium text-foreground">Solo mis tickets</p>
+                  <p className="text-xs text-muted-foreground">Filtra por usuario asignado</p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={filterMine}
+                    onChange={(e) => setFilterMine(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className={cn(
+                    'w-11 h-6 rounded-full transition-colors',
+                    filterMine ? 'bg-primary' : 'bg-muted'
+                  )}>
+                    <span className={cn(
+                      'absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-card shadow transition-transform',
+                      filterMine ? 'translate-x-5' : 'translate-x-0'
+                    )} />
+                  </div>
+                </label>
+              </div>
 
-              />
+              <div className="px-4 py-3">
+                <p className="text-sm font-medium text-foreground mb-2">Rango de fechas</p>
+                <DateRangePicker date={dateRange} setDate={setDateRange} />
+              </div>
+            </div>
 
-            </IonItem>
-            <IonItem>
-              <IonButton expand="block" onClick={() => fetchAgendaTickets(filterMine, dateRange)}>
-                Aplicar Filtros
-              </IonButton>
-            </IonItem>
-          </IonList>
-        )}      </IonContent>
-
-      {/* Tab Bar Manual (sin rutas) */}
-      <IonTabBar slot="top">
-        <IonTabButton
-          tab="list"
-          onClick={() => setActiveTab('list')}
-          selected={activeTab === 'list'}
-        >
-          <IonIcon icon={list} />
-          <IonLabel>Lista</IonLabel>
-        </IonTabButton>
-        <IonTabButton
-          tab="map"
-          onClick={() => setActiveTab('map')}
-          selected={activeTab === 'map'}
-        >
-          <IonIcon icon={map} />
-          <IonLabel>Mapa</IonLabel>
-        </IonTabButton>
-
-
-
-        <IonTabButton
-          tab="settings"
-          onClick={() => setActiveTab('settings')}
-          selected={activeTab === 'settings'}
-        >
-          <IonIcon icon={filterCircleOutline} />
-          <IonLabel>Filtrar</IonLabel>
-        </IonTabButton>
-      </IonTabBar>
+            <button
+              type="button"
+              onClick={() => fetchTickets(filterMine, dateRange)}
+              disabled={isLoading}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 active:scale-[0.98] transition-all disabled:opacity-50 cursor-pointer"
+            >
+              {isLoading ? (
+                <IonSpinner name="crescent" className="h-4 w-4" />
+              ) : (
+                <IonIcon icon={filterCircleOutline} className="text-base" />
+              )}
+              Aplicar filtros
+            </button>
+          </div>
+        )}
+      </IonContent>
     </IonPage>
   );
 };

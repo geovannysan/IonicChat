@@ -1,10 +1,10 @@
+import React from 'react';
 import {
   IonContent,
+  IonHeader,
   IonPage,
-  IonCard,
-  IonCardContent,
-  IonCardHeader,
-  IonCardTitle,
+  IonToolbar,
+  IonTitle,
   IonItem,
   IonLabel,
   IonIcon,
@@ -12,142 +12,186 @@ import {
   IonList,
   IonNote,
   IonAvatar,
-  IonActionSheet
+  IonActionSheet,
 } from '@ionic/react';
 import {
   personOutline,
   mailOutline,
   logOutOutline,
-  notificationsOutline
+  notificationsOutline,
 } from 'ionicons/icons';
+import { User, Settings, Palette } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
-import { useLocation } from '@/hooks/useLocation';
-import { useAuthContext } from '@/contexts/AuthContext';
-import { useState } from 'react';
-import apiService from '@/services/api';
+import { ThemeCustomizerPanel } from '@/components/ui/ThemeCustomizerPanel';
+import { useUserProfile, type ProfileTab } from '@/hooks/useUserProfile';
+import { cn } from '@/lib/utils';
+
+// ─── Tab config ───────────────────────────────────────────────────────────────
+
+const TABS: { key: ProfileTab; label: string; icon: React.ReactNode }[] = [
+  { key: 'perfil',        label: 'Perfil',        icon: <User      className="w-4 h-4" /> },
+  { key: 'configuracion', label: 'Config.',        icon: <Settings  className="w-4 h-4" /> },
+  { key: 'apariencia',   label: 'Apariencia',    icon: <Palette   className="w-4 h-4" /> },
+];
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 const UserProfilePage: React.FC = () => {
-  const { error } = useLocation();
-  const { user, setUser, handleLogout, handleCuenta } = useAuthContext()
-
-  const [showActionSheet, setShowActionSheet] = useState(false)
-
-  // Función auxiliar para evitar código duplicado
-  const updatePushInDB = async (pushId: boolean) => {
-
-    try {
-    const account = user.selectedAccount;
-
-     if (account) {
-      //account.id, {
-    //     method: "PUT",
-    //     data: JSON.stringify({ isPush: pushId }) 
-        await apiService.UpdatePerfil(account.id, { isPush: pushId })
-      const newuser = await apiService.updateUser(user.id, { chatperfliid: account.accountId });
-      localStorage.setItem("user", JSON.stringify(newuser))
-      setUser(newuser)
-    }
-    } catch (error) {
-      console.error("Error updating push setting:", error);
-    }
-  };
+  const {
+    user,
+    handleLogout,
+    handleCuenta,
+    activeTab,
+    setActiveTab,
+    showAccountSheet,
+    setShowAccountSheet,
+    otherAccounts,
+    activeAccountName,
+    updatePushInDB,
+    locationError,
+  } = useUserProfile();
 
   return (
     <IonPage>
-      <IonContent className="ion-padding">
-        <IonCard>
-          <IonCardContent className="text-center">
-            <IonAvatar style={{ margin: '0 auto 16px', width: '80px', height: '80px' }}>
-              <img src={`https://ui-avatars.com/api/?name=${user?.name}`} alt={user?.name} />
+      <IonHeader className="ion-no-border">
+        <IonToolbar className="border-b border-border bg-card">
+          <IonTitle>Mi perfil</IonTitle>
+        </IonToolbar>
+      </IonHeader>
+
+      <IonContent className="ion-no-padding">
+        <div className="flex flex-col h-full">
+
+          {/* ── Avatar + nombre ── */}
+          <div className="flex flex-col items-center gap-3 px-4 pt-6 pb-4 bg-card border-b border-border">
+            <IonAvatar style={{ width: 72, height: 72 }}>
+              <img
+                src={`https://ui-avatars.com/api/?name=${encodeURIComponent(user?.name ?? 'U')}&background=random`}
+                alt={user?.name}
+              />
             </IonAvatar>
-            <h2>{user?.name}</h2>
-            <div>
-              {user?.cuenta.length > 1 && (<Button className='bg-destructive text-destructive-foreground hover:bg-destructive/90' variant={"destructive"} onClick={() => setShowActionSheet(prev => !prev)}>
-                Cambiar Cuenta
-              </Button>)}
+            <div className="text-center">
+              <p className="text-base font-semibold text-foreground">{user?.name}</p>
+              <p className="text-xs text-muted-foreground">{user?.email}</p>
             </div>
-          </IonCardContent>
-        </IonCard>
+            {user?.cuenta?.length > 1 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowAccountSheet(true)}
+                className="rounded-full text-xs"
+              >
+                Cambiar cuenta
+              </Button>
+            )}
+          </div>
 
-        <IonCard>
-          <IonCardHeader>
-            <IonCardTitle>Información Personal</IonCardTitle>
-          </IonCardHeader>
-          <IonCardContent>
-            <IonList>
-              <IonItem>
-                <IonIcon icon={personOutline} slot="start" />
-                <IonLabel>
-                  <h3>Nombre</h3>
-                  <p>{user?.name || 'Nombre no disponible'}</p>
-                </IonLabel>
-              </IonItem>
+          {/* ── Tabs ── */}
+          <div className="flex border-b border-border bg-card shrink-0">
+            {TABS.map(({ key, label, icon }) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setActiveTab(key)}
+                className={cn(
+                  'flex-1 flex flex-col items-center gap-1 py-2.5 text-[11px] font-semibold transition-colors cursor-pointer',
+                  activeTab === key
+                    ? 'border-b-2 border-primary text-primary'
+                    : 'text-muted-foreground hover:text-foreground',
+                )}
+              >
+                {icon}
+                {label}
+              </button>
+            ))}
+          </div>
 
-              <IonItem>
-                <IonIcon icon={mailOutline} slot="start" />
-                <IonLabel>
-                  <h3>Email</h3>
-                  <p>{user?.email || 'Email no disponible'}</p>
-                </IonLabel>
-              </IonItem>
-            </IonList>
-          </IonCardContent>
-        </IonCard>
+          {/* ── Contenido del tab ── */}
+          <div className="flex-1 overflow-y-auto">
 
-        <IonCard>
-          <IonCardHeader>
-            <IonCardTitle>Configuración</IonCardTitle>
-          </IonCardHeader>
-          <IonCardContent>
-            <IonList>
-              {error && (
-                <IonItem>
-                  <IonNote color="danger">{error}</IonNote>
-                </IonItem>
-              )}
-              <IonItem>
-                <IonIcon icon={notificationsOutline} slot="start" />
-                <IonLabel>
-                  <h3>Notificaciones</h3>
-                  <p>Recibir notificaciones push</p>
-                </IonLabel>
-                <IonToggle slot='end' onIonChange={(e) => updatePushInDB(e.target.checked)} checked={user.selectedAccount.isPush}></IonToggle>
-              </IonItem>
-            </IonList>
-          </IonCardContent>
-        </IonCard>
+            {/* Tab: Perfil */}
+            {activeTab === 'perfil' && (
+              <div className="p-4 flex flex-col gap-4">
+                <IonList className="rounded-xl border border-border overflow-hidden bg-card ion-no-padding">
+                  <IonItem>
+                    <IonIcon icon={personOutline} slot="start" />
+                    <IonLabel>
+                      <h3>Nombre</h3>
+                      <p>{user?.name || 'No disponible'}</p>
+                    </IonLabel>
+                  </IonItem>
+                  <IonItem lines="none">
+                    <IonIcon icon={mailOutline} slot="start" />
+                    <IonLabel>
+                      <h3>Email</h3>
+                      <p>{user?.email || 'No disponible'}</p>
+                    </IonLabel>
+                  </IonItem>
+                </IonList>
 
-        <div className='w-full'>
-          <Button
-            className='bg-destructive'
-            size={"lg"}
-            onClick={handleLogout}
-            variant={"destructive"}
+                <Button
+                  variant="destructive"
+                  size="lg"
+                  className="w-full rounded-xl"
+                  onClick={handleLogout}
+                >
+                  <IonIcon icon={logOutOutline} slot="start" className="mr-2" />
+                  Cerrar sesión
+                </Button>
+              </div>
+            )}
 
-          >
-            <IonIcon icon={logOutOutline} slot="start" />
-            Cerrar Sesión
-          </Button>
+            {/* Tab: Configuración */}
+            {activeTab === 'configuracion' && (
+              <div className="p-4 flex flex-col gap-4">
+                <IonList className="rounded-xl border border-border overflow-hidden bg-card ion-no-padding">
+                  {locationError && (
+                    <IonItem>
+                      <IonNote color="danger">{locationError}</IonNote>
+                    </IonItem>
+                  )}
+                  <IonItem lines="none">
+                    <IonIcon icon={notificationsOutline} slot="start" />
+                    <IonLabel>
+                      <h3>Notificaciones push</h3>
+                      <p>Recibir alertas de nuevos mensajes</p>
+                    </IonLabel>
+                    <IonToggle
+                      slot="end"
+                      checked={user?.selectedAccount?.isPush ?? false}
+                      onIonChange={(e) => updatePushInDB(e.detail.checked)}
+                    />
+                  </IonItem>
+                </IonList>
+              </div>
+            )}
+
+            {/* Tab: Apariencia */}
+            {activeTab === 'apariencia' && (
+              <div className="p-4">
+                <ThemeCustomizerPanel />
+              </div>
+            )}
+
+          </div>
         </div>
-        {user?.cuenta && (<IonActionSheet
-          isOpen={showActionSheet}
-          onDidDismiss={() => setShowActionSheet(false)}
-          header={"Empresa Actual: " + (user?.cuenta?.find((elm: { accountId: string; }) => elm.accountId == user.perfil)?.account?.nombre || 'Opciones')}
-          buttons={[
-            ...user.cuenta.filter((elm: { accountId: string; }) => elm.accountId !== user.perfil).map((item: { userId: number; accountId: string; account: { nombre: string; } }) =>
-            ({
-              text: `Empresa: ${item.account?.nombre}`,
-              handler: () => {
-                handleCuenta(item.userId, item.accountId)
-              }
-            })),
-            {
-              text: 'Cancelar',
-              role: 'cancel'
-            }
-          ]}
-        />)}
       </IonContent>
+
+      {/* ── ActionSheet: cambio de cuenta ── */}
+      {user?.cuenta && (
+        <IonActionSheet
+          isOpen={showAccountSheet}
+          onDidDismiss={() => setShowAccountSheet(false)}
+          header={`Empresa actual: ${activeAccountName}`}
+          buttons={[
+            ...otherAccounts.map((item) => ({
+              text: `Empresa: ${item.account?.nombre}`,
+              handler: () => handleCuenta(item.userId, item.accountId),
+            })),
+            { text: 'Cancelar', role: 'cancel' },
+          ]}
+        />
+      )}
     </IonPage>
   );
 };

@@ -11,7 +11,7 @@ import { useRef, useLayoutEffect, useState, useCallback } from 'react';
  *   - `isAtBottom`: Un booleano que es `true` si el scroll está al final.
  *   - `scrollToBottom`: Una función para desplazar manualmente el scroll al final.
  */
-export function useAutoScroll(dep: any[] = [], externalRef?: React.RefObject<HTMLDivElement> | null) {
+export function useAutoScroll(dep: any[] = [], externalRef?: React.RefObject<HTMLDivElement | null> | null) {
     const internalRef = useRef<HTMLDivElement>(null);
     const containerRef = externalRef || internalRef;
     const [isAtBottom, setIsAtBottom] = useState(true);
