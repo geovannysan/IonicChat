@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { RotateCcw, Mountain, MapPin, Navigation2 } from "lucide-react";
 import { Map, MapControls, MapMarker, MarkerContent, MarkerPopup, useMap, MapRoute } from "./ui/map";
 import { Button } from "./ui/Button";
 import { cn } from "@/lib/utils";
-import {  getStyleMarquer } from "@/pages/Soport/helpers/status.helper";
+import { getStyleMarquer } from "@/pages/Soport/helpers/status.helper";
 import { useHistory } from "react-router-dom";
+import { se } from "date-fns/locale";
 
 interface LocationDetail {
   id: string;
@@ -14,7 +15,7 @@ interface LocationDetail {
   lng: number;
   lat: number;
   description?: string;
-  status?:  string;
+  status?: string;
 }
 
 function calculateDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
@@ -242,7 +243,7 @@ function MapContent({
             <div >
               <div className="flex items-center gap-2">
                 <p className="font-medium text-foreground">{location.name} Estado: {location.status}</p>
-               
+
               </div>
               {location.description && (
                 <p className="text-xs text-muted-foreground">{location.description}</p>
@@ -298,10 +299,12 @@ export function DraggableMarkerExample({
   status?: string
 }>) {
   const [userLocation, setUserLocation] = useState({ lng, lat });
-
-  useEffect(() => {
+  const handleChangeLocation = useCallback(() => {
     setUserLocation({ lng, lat });
-  }, [lng, lat]);
+  }, [lat, lng]);
+  useEffect(() => {
+    handleChangeLocation();
+  }, [handleChangeLocation]);
 
   const handleLocate = (coords: { longitude: number; latitude: number }) => {
     setUserLocation({ lng: coords.longitude, lat: coords.latitude });

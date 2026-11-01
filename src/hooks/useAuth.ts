@@ -5,10 +5,12 @@ import { useDataStore, type ChatItem } from "../stores/useTicketsChat";
 import apiService from "@/services/api";
 import connectToSocket from "@/services/socket";
 import { App } from "@capacitor/app";
-
-const playNotificationSound = () => {
+import { Haptics, ImpactStyle } from '@capacitor/haptics';
+const playNotificationSound = async () => {
     try {
         const audioContext = new (globalThis.AudioContext || (globalThis as any).webkitAudioContext)();
+
+        await Haptics.impact({ style: ImpactStyle.Medium });
         if (!audioContext) {
             console.warn("Web Audio API is not supported by this browser.");
             return;
@@ -42,40 +44,9 @@ export const useAuth = () => {
     const [user, setUser] = useState<any | null>(primer === "null" ? null : primer);
     const [empresaIdAnterior, setEmpresaIdAnterior] = useState<string | null>(null);
     const [empresaIdActual, setEmpresaIdActual] = useState<string | null>(null);
-    const [ticketChats, setTicketChats] = useState<ChatItem>({
-        id: 0,
-        status: '',
-        unreadMessages: 0,
-        lastMessage: '',
-        isGroup: false,
-        userId: null,
-        contactId: 0,
-        whatsappId: 0,
-        queueId: null,
-        createdAt: '',
-        updatedAt: '',
-        ChatPerfil: {
-            conexionID: 0,
-            conexiontype: {
-                id: 0,
-                tipo: ''
-            },
-            id: 0
-        },
-        Contact: {
-            id: 0,
-            name: '',
-            number: '',
-            profilePicURl: '',
-            typeContact: '',
-            isGroup: false,
-            createdAt: '',
-            updatedAt: '',
-            extraInfo: []
-        }
-    });
+    const [ticketChats, setTicketChats] = useState<ChatItem>({} as ChatItem);
 
-  
+
 
     const { addChatTickte, addChatnotify, deleteChat, deleteNotify, fetchUsers } = useDataStore();
     const currentRoomRef = useRef<any | null>(null);
@@ -115,7 +86,7 @@ export const useAuth = () => {
                         setLoading(false);
                         globalThis.location.href = "/";
                     }
-                }finally {
+                } finally {
                     setLoading(false);
                 }
             })();
@@ -130,7 +101,7 @@ export const useAuth = () => {
         if (!user?.id) return;
         if (!currentRoomRef.current) {
             currentRoomRef.current = connectToSocket().connect();
-           
+
             console.log("conectados");
         }
 
@@ -192,6 +163,24 @@ export const useAuth = () => {
                     "type": "mensaje",
                     "objeto": ticket
                 };
+                addChatnotify(notify);
+                playNotificationSound();
+            }
+            if (data.notify_internal) {
+                const { id,
+                    userOneId,
+                    userTwoId,
+                    userId,
+                    content } = data.notify_internal;
+                const userSet = new Set([userOneId, userTwoId]);
+                if (!userSet.has(user.id)) return;
+                const notify = {
+                    id: id + "-internal",
+                    body: content,
+                    title: "Nuevo Mensjae interno",
+                    type: "internal",
+                    objeto: { id, userOneId, userTwoId, userId, content },
+                }
                 addChatnotify(notify);
                 playNotificationSound();
             }

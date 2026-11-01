@@ -161,16 +161,19 @@ export const useDataStore = create<DataStore>((set) => ({
   fetchChatHistoryAdd: async (contactId, id) => {
     set({ isLoading: true, error: null })
     try {
+
       const data: any = await apiService.getChatHistory(contactId, id)
       const { messages: chat, count, hasMore } = data
 
       set((state) => {
 
-        return { chatHistory: [...chat, ...state.chatHistory], isLoading: false }
+        return { chatHistory: [...chat, ...state.chatHistory] }
       })
       set({ countchat: count, hasMorechat: hasMore })
     } catch (error: any) {
-      set({ error: error.message || 'Error desconocido', isLoading: false })
+      set({ error: error.message || 'Error desconocido', })
+    } finally {
+      set({ isLoading: false })
     }
   },
 
@@ -233,6 +236,7 @@ export const useDataStore = create<DataStore>((set) => ({
 
   addChatTickte: (chat) => {
     set((state) => {
+      console.log(state.chats, chat, 'addChatTickte');
       const exists = state.chats.some((c) => c.id === chat.id);
       const nuevos = exists
         ? state.chats.map((c) => (c.id === chat.id ? chat : c)) // reemplaza si existe
@@ -261,6 +265,7 @@ export const useDataStore = create<DataStore>((set) => ({
     }),
   addMessage: (message: any) =>
     set((state) => {
+      console.log(JSON.stringify(state.chatHistory, null, 2), message, 'addMessage');
       const exists = state.chatHistory.some((m) => m.id === message.id);
       const updated = exists
         ? state.chatHistory.map((m) => (m.id === message.id ? message : m))
@@ -312,6 +317,7 @@ export interface ChatItem {
   Contact: Contact
   Teams?: Team
   User?: User
+  Message: { contactId: number | null }[]
 }
 
 export interface INotificatyion {

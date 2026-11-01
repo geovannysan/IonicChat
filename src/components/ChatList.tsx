@@ -26,7 +26,7 @@ export const ChatList: React.FC<{
   const [searchText, setSearchText] = useState('');
 
   useIonViewWillEnter(() => {
-    if (chats.length === 0) {
+    if ((chats || []).length === 0) {
       fetchChats(1);
     }
   });

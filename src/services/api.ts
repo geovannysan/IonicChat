@@ -136,7 +136,7 @@ class ApiService {
     });
   }
   async UpdatePerfil(id: string, updates: unknown) {
-    return this.request(`/Users/${id}`, {
+    return this.request(`/Users/acount/${id}`, {
       method: 'PUT',
       data: JSON.stringify(updates),
     });

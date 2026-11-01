@@ -27,6 +27,8 @@ import { useDataStore } from '@/stores/useTicketsChat';
 import { useHistory } from 'react-router';
 import { App } from '@capacitor/app';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/Button';
+import { LoaderCircle } from 'lucide-react';
 
 const ChatDetailPage: React.FC = () => {
   const { user } = useAuthContext();
@@ -37,15 +39,15 @@ const ChatDetailPage: React.FC = () => {
     ticketChat,
     chatHistory,
     scrollRef,
+    isLoading,
     handleScrolltop,
   } = useChatDetail();
 
   const {
     setSelectedTicketChat,
     deleteChat,
-    
+
     deletteChat,
-    isLoading,
   } = useDataStore();
 
   const handleSubmit = async () => {
@@ -63,7 +65,7 @@ const ChatDetailPage: React.FC = () => {
   const handleClose = async () => {
     history.replace('/tabs/chat');
     try {
-      await apiService.request('/Tickets/close' + ticketChat.id, {
+      await apiService.request('/Tickets/close/' + ticketChat.id, {
         method: 'DELETE',
       });
       deleteChat(ticketChat.id);
@@ -100,7 +102,7 @@ const ChatDetailPage: React.FC = () => {
     };
   }, [deletteChat]);
 
-  
+
 
   const contactName = ticketChat.Contact?.name || 'Usuario';
   const contactNumber = ticketChat.Contact?.number || '';
@@ -175,15 +177,27 @@ const ChatDetailPage: React.FC = () => {
 
       {/* ── Mensajes ── */}
       <IonContent className="ion-no-padding">
+       
         <ChatLists
           messages={chatHistory}
           onScroll={handleScrolltop}
-          loading={isLoading}
+          loading={isLoading.current}
           scrollRef={scrollRef}
           type={ticketChat.ChatPerfil?.conexionID ?? 1}
         />
       </IonContent>
-
+ {/* Spinner de carga de mensajes anteriores */}
+        {isLoading.current && (
+          <Button
+            disabled
+            size="icon"
+            variant="outline"
+            className="absolute top-10 left-1/2 -translate-x-1/2 z-10 rounded-full shadow-md bg-card/80 backdrop-blur-sm border-border"
+            aria-label="Cargando mensajes"
+          >
+            <LoaderCircle className="h-4 w-4 animate-spin text-muted-foreground" />
+          </Button>
+        )}
       {/* ── Footer: sin IonToolbar doble, directamente ChatBottombar ── */}
       <IonFooter className="ion-no-border">
         <div className="bg-card border-t border-border">

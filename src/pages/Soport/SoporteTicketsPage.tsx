@@ -257,9 +257,10 @@ const SoporteTicketsPage: React.FC = () => {
                   <p className="text-sm font-medium text-foreground">Solo mis tickets</p>
                   <p className="text-xs text-muted-foreground">Filtra por usuario asignado</p>
                 </div>
-                <label className="relative inline-flex items-center cursor-pointer">
+                <label htmlFor="filterMine" className="relative inline-flex items-center cursor-pointer">
                   <input
                     type="checkbox"
+                    id="filterMine"
                     checked={filterMine}
                     onChange={(e) => setFilterMine(e.target.checked)}
                     className="sr-only peer"

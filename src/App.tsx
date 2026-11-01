@@ -29,6 +29,10 @@ import SoporteTicketDetailPage from './pages/Soport/SoporteTicketDetailPage';
 import UserProfilePage from './pages/UserProfilePage';
 import LoginPage from './pages/LoginPage';
 
+// Chat Interno
+import ChatInternoListPage from './pages/ChatInterno/pages/ChatInternoListPage';
+import ChatInternoConversationPage from './pages/ChatInterno/pages/ChatInternoConversationPage';
+
 // Components
 import { PrivateRoute } from './components/PrivateRoute';
 
@@ -101,6 +105,12 @@ const AppContent: React.FC = () => {
             <ChatHistorialPage />
           </PrivateRoute>
         </Route>
+        {/* Chat Interno: conversación entre dos usuarios (fuera de tabs para pantalla completa) */}
+        <Route exact path="/internal-chat/:myId/:otherId">
+          <PrivateRoute>
+            <ChatInternoConversationPage />
+          </PrivateRoute>
+        </Route>
         {/* Rutas privadas con tabs */}
         <Route path="/tabs">
           <PrivateRoute>
@@ -118,6 +128,8 @@ const AppContent: React.FC = () => {
                 </Route>
                 {/* User Profile */}
                 <Route exact path="/tabs/user/:id" component={UserProfilePage} />
+                {/* Chat Interno: lista de usuarios */}
+                <Route exact path="/tabs/internal-chat" component={ChatInternoListPage} />
                 <Route exact path="/tabs">
                   <Redirect to="/tabs/chat" />
                 </Route>

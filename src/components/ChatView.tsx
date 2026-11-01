@@ -98,7 +98,7 @@ export const ChatView: React.FC = () => {
                 <IonInfiniteScrollContent loadingSpinner="bubbles" />
             </IonInfiniteScroll>
 
-            {isLoadingMessages && messages.length === 0 ? (
+            {isLoadingMessages && (messages || []).length === 0 ? (
                 <div className="flex justify-center items-center h-full">
                     <IonSpinner />
                 </div>

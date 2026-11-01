@@ -107,9 +107,9 @@ export function Sidebar({ chats, onSelectUser, onRefresh }: SidebarProps) {
   }), [sorted, user?.id]);
 
   const tabs: { key: TabKey; label: string }[] = [
-    { key: "all",      label: "Todas" },
-    { key: "mine",     label: "Mías" },
-    { key: "pending",  label: "Pend." },
+    { key: "all", label: "Todas" },
+    { key: "mine", label: "Mías" },
+    { key: "pending", label: "Pend." },
     { key: "assigned", label: "Asig." },
   ];
 
@@ -120,9 +120,15 @@ export function Sidebar({ chats, onSelectUser, onRefresh }: SidebarProps) {
       <div className="p-3 border-b border-border space-y-2.5 shrink-0">
         <div className="flex items-center gap-2">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+            <Search
+              className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none"
+              aria-hidden="true"
+            />
+
             <input
               type="text"
+              name="search"
+              aria-label="Buscar conversación"
               placeholder="Buscar conversación..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -311,10 +317,10 @@ export function Sidebar({ chats, onSelectUser, onRefresh }: SidebarProps) {
 
 function SoftBadgeDemo({ status }: { status: string }) {
   const map: Record<string, { dot: string; label: string; cls: string }> = {
-    pending:   { dot: "bg-amber-500",   label: "Pendiente",  cls: "text-amber-500 hover:bg-amber-500/10" },
-    assigned:  { dot: "bg-red-500",     label: "Asignada",   cls: "text-red-500 hover:bg-red-500/10" },
-    open:      { dot: "bg-emerald-500", label: "Abierta",    cls: "text-emerald-500 hover:bg-emerald-500/10" },
-    completed: { dot: "bg-red-500",     label: "Completada", cls: "text-red-500 hover:bg-red-500/10" },
+    pending: { dot: "bg-amber-500", label: "Pendiente", cls: "text-amber-500 hover:bg-amber-500/10" },
+    assigned: { dot: "bg-red-500", label: "Asignada", cls: "text-red-500 hover:bg-red-500/10" },
+    open: { dot: "bg-emerald-500", label: "Abierta", cls: "text-emerald-500 hover:bg-emerald-500/10" },
+    completed: { dot: "bg-red-500", label: "Completada", cls: "text-red-500 hover:bg-red-500/10" },
   };
   const entry = map[status];
   if (!entry) return null;

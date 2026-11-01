@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { useParams,  } from 'react-router-dom';
+import { useParams, } from 'react-router-dom';
 import { useDataStore } from '../stores/useTicketsChat';
 import { useAuthContext } from '@/contexts/AuthContext';
 
@@ -10,7 +10,7 @@ export const useChatDetail = () => {
   const prevScrollHeight = useRef<number>(0);
   const [pageNumber, setPageNumber] = useState(1);
   const [message, setMessage] = useState('');
-
+  const islondingRef = useRef<boolean>(false)
   const {
     chats,
     ticketChat,
@@ -20,7 +20,7 @@ export const useChatDetail = () => {
     fetchChatHistoryAdd,
     setSelectedTicketChat,
     hasMorechat,
-    isLoading,
+
     addMessage,
   } = useDataStore();
 
@@ -51,7 +51,7 @@ export const useChatDetail = () => {
   const handleScrolltop = (e: React.UIEvent<HTMLDivElement>) => {
     const { scrollTop, scrollHeight } = e.currentTarget;
 
-    if (!hasMorechat || isLoading) return;
+    if (!hasMorechat || islondingRef.current) return;
     if (scrollTop === 0) {
       prevScrollHeight.current = scrollHeight;
       loadMore();
@@ -59,12 +59,15 @@ export const useChatDetail = () => {
   };
 
   const loadMore = async () => {
-    if (!hasMorechat || isLoading) return;
+    if (!hasMorechat) return;
 
     const nextPage = pageNumber + 1;
+    islondingRef.current = true
     setPageNumber(nextPage);
     await new Promise((res) => setTimeout(res, 1500));
+    islondingRef.current = false
     await fetchChatHistoryAdd(ticketChat.id || Number(id), nextPage);
+
   };
 
   const handleSendMessage = async () => {
@@ -82,7 +85,7 @@ export const useChatDetail = () => {
       const found = chats.find((c) => c.id === ticketId);
       if (found) {
         setSelectedTicketChat(found);
-      } else if (chats.length === 0) {
+      } else if ((chats || []).length === 0) {
         fetchUsers(1);
       }
     }
@@ -95,7 +98,7 @@ export const useChatDetail = () => {
   useEffect(() => {
     if (!id || Number(id) === 0) return;
     const ticketId = parseInt(id, 10);
-    if (ticketChat.id !== ticketId && chats.length > 0) {
+    if (ticketChat.id !== ticketId && (chats || []).length > 0) {
       const found = chats.find((c) => c.id === ticketId);
       if (found) {
         setSelectedTicketChat(found);
@@ -144,7 +147,7 @@ export const useChatDetail = () => {
   return {
     ticketChat,
     chatHistory,
-    isLoading,
+    isLoading: islondingRef,
     message,
     setMessage,
     scrollRef,

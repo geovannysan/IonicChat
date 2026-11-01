@@ -116,7 +116,7 @@ export const ChatListItem: React.FC<ChatListItemProps> = ({
             </Badge>
           )}
 
-          {chat.etiquetas && chat.etiquetas.length > 0 && (
+          {chat.etiquetas && (chat.etiquetas || []).length > 0 && (
             <div className="flex items-center gap-0.5">
               {chat.etiquetas.slice(0, 3).map((tag) => (
                 <span
@@ -129,9 +129,9 @@ export const ChatListItem: React.FC<ChatListItemProps> = ({
             </div>
           )}
 
-          {chat.unreadMessages > 0 && (
+          {(chat.Message || []).length === 1 && chat.Message[0].contactId === null && (
             <span className="ml-auto inline-flex items-center justify-center h-4 min-w-4 px-1 rounded-full bg-primary text-primary-foreground text-[9px] font-bold shrink-0">
-              {chat.unreadMessages}
+              {1}
             </span>
           )}
         </div>

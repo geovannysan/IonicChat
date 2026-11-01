@@ -28,7 +28,7 @@ const actionIcons = [
 
 function ChatListComponent({ messages, onScroll, scrollRef, loading, history = false, type }: Readonly<ChatListComponentProps>) {
   const renderedMessages = useMemo(() => {
-    if (!messages || messages.length === 0) return [];
+    if (!messages || (messages ?? []).length === 0) return [];
 
     return messages.map((message: Message, index: number) => {
       const variant = getMessageVariant(message.fromMe);

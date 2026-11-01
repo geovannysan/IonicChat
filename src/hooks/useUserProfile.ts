@@ -32,6 +32,7 @@ export function useUserProfile() {
       const newUser = await apiService.updateUser(user.id, {
         chatperfliid: account.accountId,
       });
+      console.log("newUser", JSON.stringify(newUser));
       localStorage.setItem("user", JSON.stringify(newUser));
       setUser(newUser);
     } catch (error) {
